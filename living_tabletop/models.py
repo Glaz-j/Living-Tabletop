@@ -486,11 +486,12 @@ class PendingCheck(DomainModel):
     progress_before: int = 0
     location_before: str | None = None
     dynamic_action: "ActionDefinition | None" = None
+    turn_trace_id: str | None = None
 
 
 class AgentCallRecord(DomainModel):
     id: str
-    role: Literal["action_interpreter", "keeper", "director", "narrator"]
+    role: Literal["action_interpreter", "keeper", "turn_planner", "director", "narrator"]
     input_state_version: int
     output_digest: str
     structured_output: dict[str, Any] | None = None
@@ -521,6 +522,9 @@ class NarrativeSequence(DomainModel):
     beats: list[NarrativeBeat] = Field(default_factory=list)
     canonical_seed: str = Field(default="", max_length=4000)
     mechanical_result: dict[str, Any] | None = None
+    outcome_envelope: dict[str, Any] | None = None
+    grounding_report: dict[str, Any] | None = None
+    turn_trace_id: str | None = None
     created_at: datetime
 
 
@@ -570,6 +574,7 @@ class WorldState(DomainModel):
     narrative_sequence: NarrativeSequence | None = None
     visible_history: list[PlayerVisibleMemory] = Field(default_factory=list)
     agent_calls: list[AgentCallRecord] = Field(default_factory=list)
+    turn_traces: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ScenarioDefinition(DomainModel):
@@ -609,6 +614,7 @@ class ActionIntent(DomainModel):
     goal: str | None = None
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     clarification: str | None = None
+    turn_trace_id: str | None = None
     source: Literal["button", "player_text", "llm", "open", "clarification"] = "player_text"
 
 
@@ -630,6 +636,9 @@ class OpenActionPlan(DomainModel):
     rest_day_offset: int = Field(default=0, ge=0, le=7)
     success_text: str = Field(min_length=1, max_length=1200)
     failure_text: str = Field(default="这次尝试没有产生预期的结果。", min_length=1, max_length=1200)
+    approved_fact_ids: list[str] = Field(default_factory=list)
+    knowledge_source_id: str | None = None
+    disclosure_mode: Literal["automatic", "check", "refuse", "unknown"] | None = None
 
     @model_validator(mode="after")
     def normalize_resolution(self) -> "OpenActionPlan":
@@ -683,6 +692,10 @@ class ActionResolution(DomainModel):
     narrative_seed: str = ""
     visible_events: list[EventRecord] = Field(default_factory=list)
     director_intervention: DirectorIntervention | None = None
+    disclosed_fact_ids: list[str] = Field(default_factory=list)
+    knowledge_source_id: str | None = None
+    outcome_envelope: dict[str, Any] | None = None
+    turn_trace_id: str | None = None
     continues_previous_narrative: bool = False
     state_version: int
 

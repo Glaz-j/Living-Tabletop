@@ -32,6 +32,7 @@
     "bed_attack_seen": false,
     "basement_power": false,
     "director_case_note": false,
+    "director_case_note_opportunity": false,
     "case_closed": false,
     "false_report": false,
     "escaped": false
@@ -49,14 +50,14 @@
         "id": "hint_knott_case_note",
         "label": "重读诺特的地址笔记",
         "requirements": [
-          {"subject":"flag:director_case_note","predicate":"value","operator":"eq","value":false},
+          {"subject":"flag:director_case_note_opportunity","predicate":"value","operator":"eq","value":false},
           {"subject":"player","predicate":"knowledge","operator":"not_known","value":"f_house_violent_history"}
         ],
         "effects": [
-          {"op":"mark_flag","params":{"key":"director_case_note","value":true,"visible":true}}
+          {"op":"mark_flag","params":{"key":"director_case_note_opportunity","value":true,"visible":true}}
         ],
         "world_justification": "诺特将写有前租客姓名和宅邸地址的便笺推到你手边，没有催促，只让它安静地留在咖啡杯旁。",
-        "affected_entities": ["npc_knott", "f_house_violent_history"]
+        "affected_entities": ["npc_knott"]
       }
     ]
   },
@@ -95,6 +96,8 @@
   "facts": [
     {"id":"f_contract","subject":"player","predicate":"commission","value":"调查科比特宅邸并向诺特报告","visibility":"PLAYER","created_at":"1920-09-17T09:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
     {"id":"f_macario_tragedy","subject":"loc_house_exterior","predicate":"last_tenants","value":"马卡里奥一家入住后相继精神崩溃并离开","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"npc_knott","immutable":true,"canon":"hard_canon"},
+    {"id":"f_macario_children_status","subject":"npc_gabriela","predicate":"children_status","value":"马卡里奥家的两个孩子已被亲属接走","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"npc_knott","immutable":true,"canon":"hard_canon"},
+    {"id":"f_macario_parents_status","subject":"npc_gabriela","predicate":"parents_status","value":"马卡里奥夫妇如今都在罗克斯伯里疗养院","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"npc_knott","immutable":true,"canon":"hard_canon"},
     {"id":"f_house_violent_history","subject":"loc_house_exterior","predicate":"history","value":"数代住户遭遇疾病、事故、自杀与仓促搬离","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"boston_globe","immutable":true,"canon":"hard_canon"},
     {"id":"f_corbitt_purchase","subject":"creature_corbitt","predicate":"purchased_house","value":"1835 年从最初建造者手中买下宅邸","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"central_library","immutable":true,"canon":"hard_canon"},
     {"id":"f_corbitt_lawsuit","subject":"creature_corbitt","predicate":"neighbor_lawsuit","value":"邻居曾因其怪异危险的行为要求他迁离，但诉讼未成功","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"central_library","immutable":true,"canon":"hard_canon"},
@@ -140,7 +143,10 @@
   "initial_player_known_fact_ids": ["f_contract"],
   "npc_knowledge": [
     {"knower_id":"npc_knott","fact_id":"f_macario_tragedy","confidence":0.9,"source":"tenant history","learned_at":"1920-09-17T09:00:00","concealed":false},
+    {"knower_id":"npc_knott","fact_id":"f_macario_children_status","confidence":1.0,"source":"tenant history","learned_at":"1920-09-17T09:00:00","concealed":false},
+    {"knower_id":"npc_knott","fact_id":"f_macario_parents_status","confidence":1.0,"source":"tenant history","learned_at":"1920-09-17T09:00:00","concealed":false},
     {"knower_id":"npc_dooley","fact_id":"f_macario_sanitarium","confidence":0.8,"source":"neighborhood gossip","learned_at":"1920-09-17T09:00:00","concealed":false},
+    {"knower_id":"npc_dooley","fact_id":"f_macario_children_status","confidence":0.8,"source":"neighborhood gossip","learned_at":"1920-09-17T09:00:00","concealed":false},
     {"knower_id":"npc_gabriela","fact_id":"f_gabriela_testimony","confidence":1.0,"source":"direct experience","learned_at":"1920-09-17T09:00:00","concealed":false},
     {"knower_id":"npc_vittorio","fact_id":"f_own_weapon","confidence":0.8,"source":"fragmented memory","learned_at":"1920-09-17T09:00:00","concealed":false}
   ],
@@ -185,16 +191,16 @@
   "actions": [
     {
       "id":"cafe_question_knott","label":"追问诺特关于上一户租客","type":"TALK","location":"loc_cafe","target":"npc_knott","duration_minutes":8,"skill":null,"difficulty":"regular","aliases":["问诺特","询问房东","了解马卡里奥一家"],"dialogue_text":"“诺特先生，在我接下钥匙之前，请把上一户租客身上发生的事原原本本告诉我。”","requirements":[],"forbidden":[],
-      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_macario_tragedy"}}],"failure_effects":[],"always_effects":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_macario_tragedy"}},{"op":"reveal_fact","params":{"fact_id":"f_macario_children_status"}},{"op":"reveal_fact","params":{"fact_id":"f_macario_parents_status"}}],"failure_effects":[],"always_effects":[],
       "success_text":"诺特承认，马卡里奥夫妇先后精神崩溃，两个孩子也被亲属接走。他不是要你粉饰太平，只希望得到一个能解释这一切的答案。","failure_text":"诺特只重复委托书上的内容。",
       "success_beats":["诺特把咖啡杯推到一旁，指腹在钥匙齿上来回摩挲。那不是房东谈论普通租务纠纷时会有的神情。","“马卡里奥先生先是在门厅摔伤，后来开始说墙里有人叫他的名字。几个月后，他拿刀追着自己的妻子，嘴里却一直喊着让她快逃。”","“马卡里奥太太也没能撑住。两个孩子被亲属接走，夫妇二人如今都在罗克斯伯里疗养院——这就是我先前没有写进委托书的部分。”","诺特把钥匙推到你面前。 “我不是要你替我证明房子安全。我只想知道那里究竟发生了什么，以及还有没有人能进去住。”"],
       "failure_beats":["诺特将委托书重新转向你，像是那几行打字能够代替他的回答。","“需要调查的内容都写在这里：确认房屋状况，说明是否适合再次出租。上一户租客的私事与委托无关。”","他说完便端起已经冷掉的咖啡，不再碰桌上的钥匙。"],"interrupted_text":"来电打断了你们的谈话。","once":true,"suggest":true,"risk":"safe","category":"social"
     },
     {
-      "id":"cafe_review_case_note","label":"重新整理诺特留下的公开线索","type":"SEARCH","location":"loc_cafe","target":"npc_knott","duration_minutes":12,"skill":null,"difficulty":"regular","aliases":["重读笔记","整理案件","查看地址记录"],
-      "requirements":[{"subject":"flag:director_case_note","predicate":"value","operator":"eq","value":true}],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_house_violent_history"}],
-      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_house_violent_history"}},{"op":"mark_flag","params":{"key":"director_case_note","value":false}}],"failure_effects":[],"always_effects":[],
-      "success_text":"你把住户姓名与门牌号并排整理，发现它们足以在公开索引中串起多起旧事故。这不是单次家庭悲剧，而是跨越数十年的重复模式。","failure_text":"笔记里没有新的可用信息。","interrupted_text":"一通电话打断了整理。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+      "id":"cafe_review_case_note","label":"依据地址便笺检索公开索引","type":"SEARCH","location":"loc_cafe","target":"npc_knott","duration_minutes":30,"skill":"research","difficulty":"regular","aliases":["重读笔记","整理案件","查看地址记录"],
+      "requirements":[{"subject":"flag:director_case_note_opportunity","predicate":"value","operator":"eq","value":true}],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_house_violent_history"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_house_violent_history"}},{"op":"mark_flag","params":{"key":"director_case_note_opportunity","value":false}}],"failure_effects":[],"always_effects":[],
+      "success_text":"便笺本身只有姓名和地址。你据此查过公开索引，才把多起疾病、事故、自杀与仓促搬离串成跨越数十年的重复模式。","failure_text":"便笺给出了检索入口，但这一次你没能从公开索引中建立可靠关联。","interrupted_text":"一通电话打断了检索。","once":true,"suggest":true,"risk":"safe","category":"investigate"
     },
     {
       "id":"cafe_report_success","label":"向诺特提交最终调查报告","type":"TALK","location":"loc_cafe","target":"npc_knott","duration_minutes":15,"skill":null,"difficulty":"regular","aliases":["结案","报告真相","告诉诺特解决了"],"dialogue_text":"“诺特先生，调查结束了。我会把那栋房子里发生的一切，从头告诉你。”",

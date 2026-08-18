@@ -55,10 +55,13 @@ class Director:
         director.actions_since_evaluation += 1
         director.recent_action_types.append(action.type)
         director.recent_action_types = director.recent_action_types[-10:]
+        current_location = state.entities.get(state.entities[state.player.entity_id].location or "")
+        is_off_main = current_location is not None and "off_main" in current_location.tags
         if action.id.startswith("open__"):
-            director.off_main_streak += 1
             director.last_open_goal = action.label
-        elif len(state.discovered_clue_ids) > progress_before:
+        if is_off_main:
+            director.off_main_streak += 1
+        else:
             director.off_main_streak = 0
         if len(state.discovered_clue_ids) > progress_before:
             director.actions_without_progress = 0

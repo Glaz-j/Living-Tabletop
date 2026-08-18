@@ -5,9 +5,8 @@ import json
 from dataclasses import dataclass
 
 from living_tabletop.engine import GameEngine
-from living_tabletop.keeper import Keeper
 from living_tabletop.llm import LLMSettings, OpenAICompatibleLLM
-from living_tabletop.models import ActionIntent, PlayerVisibleMemory
+from living_tabletop.models import PlayerVisibleMemory
 from living_tabletop.scenario import create_initial_state, load_scenario
 
 
@@ -46,6 +45,16 @@ CASES = {
             setup_action_id="cafe_question_knott",
         ),
         SmokeCase(
+            "children_status",
+            "loc_cafe",
+            "孩子们后来怎么样了？",
+        ),
+        SmokeCase(
+            "weather_smalltalk",
+            "loc_cafe",
+            "今天天气真好，你觉得呢？",
+        ),
+        SmokeCase(
             "visible_dossier",
             "loc_globe",
             "我去把地板上那份关于马卡里奥一家的简报拿来看看。",
@@ -56,7 +65,7 @@ CASES = {
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run real Keeper inputs through the local structured harness.")
+    parser = argparse.ArgumentParser(description="Run real V2 agent-runtime turns through the local structured harness.")
     parser.add_argument("--model", default="qwen3.5:9b-q4_K_M")
     parser.add_argument("--base-url", default="http://127.0.0.1:11434/v1")
     parser.add_argument(
@@ -73,6 +82,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--max-output-tokens", type=int, default=900)
     parser.add_argument("--context-window", type=int, default=8192)
+    parser.add_argument(
+        "--with-narrator",
+        action="store_true",
+        help="Also run the grounded asynchronous Narrator for the resolved turn.",
+    )
     return parser.parse_args()
 
 
@@ -95,9 +109,7 @@ def main() -> int:
         ),
         provider="local",
     )
-    offline_llm = OpenAICompatibleLLM(LLMSettings(enabled=False, api_key=None))
-    engine = GameEngine(scenario, offline_llm)
-    keeper = Keeper(local_llm, scenario)
+    engine = GameEngine(scenario, local_llm)
     selected = args.cases or list(CASES)
     failed = False
 
@@ -121,26 +133,33 @@ def main() -> int:
             state, resolution = engine.play(state, action_id=case.setup_action_id)
             if not resolution.accepted:
                 raise RuntimeError(f"setup action failed: {case.setup_action_id}")
-        intent = ActionIntent(
-            content=case.player_text,
-            goal=case.player_text,
-            confidence=1,
-            source="player_text",
-        )
         try:
-            decision = keeper.adjudicate(
-                state,
-                intent,
-                engine.kernel.available_actions(state),
-            )
-            call = state.agent_calls[-1]
+            state, resolution = engine.play(state, text=case.player_text)
+            call = next(item for item in reversed(state.agent_calls) if item.role == "turn_planner")
+            trace = state.turn_traces[-1]
+            generated_beats = []
+            grounding = None
+            if args.with_narrator and state.narrative_sequence is not None:
+                generated_beats = engine.narrator.expand_sequence(
+                    state,
+                    state.narrative_sequence,
+                )
+                grounding = state.narrative_sequence.grounding_report
             output = {
                 "case": case.name,
                 "ok": True,
                 "latency_ms": call.latency_ms,
                 "input_tokens": call.input_tokens,
                 "output_tokens": call.output_tokens,
-                "decision": decision.model_dump(mode="json"),
+                "action_id": resolution.action_id,
+                "accepted": resolution.accepted,
+                "check": resolution.check.model_dump(mode="json") if resolution.check else None,
+                "planner_output": trace.get("planner_output"),
+                "knowledge_query": trace.get("knowledge_query"),
+                "disclosure": trace.get("disclosure"),
+                "learned_fact_ids": trace.get("state_diff", {}).get("learned_fact_ids", []),
+                "generated_beats": generated_beats,
+                "grounding": grounding,
             }
         except Exception as error:
             failed = True

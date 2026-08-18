@@ -185,17 +185,40 @@ class WorldKernel:
             fact_id = str(params["fact_id"])
             if fact_id not in state.facts:
                 raise KernelValidationError(f"Cannot reveal missing fact: {fact_id}")
+            source_entity_id = params.get("source_entity_id")
+            if source_entity_id is not None and str(source_entity_id) not in state.entities:
+                raise KernelValidationError(f"Cannot disclose from missing entity: {source_entity_id}")
             newly_known = fact_id not in state.player_known_fact_ids
             state.player_known_fact_ids.add(fact_id)
             clue_id = self._clue_by_fact.get(fact_id)
             if clue_id:
                 state.discovered_clue_ids.add(clue_id)
+            if params.get("disclosure"):
+                self.append_event(
+                    state,
+                    "fact_disclosed",
+                    actor=str(source_entity_id) if source_entity_id is not None else None,
+                    target=fact_id,
+                    payload={
+                        "fact_id": fact_id,
+                        "source_entity_id": source_entity_id,
+                        "source": source,
+                        "newly_learned": newly_known,
+                    },
+                    visible=True,
+                )
             if newly_known:
                 self.append_event(
                     state,
                     "player_learned_fact",
                     target=fact_id,
-                    payload={"fact_id": fact_id, "source": source, "clue_id": clue_id},
+                    payload={
+                        "fact_id": fact_id,
+                        "source": source,
+                        "source_entity_id": source_entity_id,
+                        "clue_id": clue_id,
+                        "newly_learned": True,
+                    },
                     visible=True,
                 )
             return

@@ -859,6 +859,19 @@ async function refreshDeveloper() {
     $("#director-decision").textContent = latest
       ? `${latest.action}\n\n原因：${latest.reason}\n\n世界依据：${latest.world_justification}\n\n预期：${latest.expected_experience_effect}`
       : `Phase: ${data.director.phase}\n尚未触发干预。`;
+    const trace = data.turn_traces?.at(-1);
+    $("#turn-trace").textContent = trace
+      ? [
+          `状态：${trace.status} · ${trace.action_id || "未绑定动作"}`,
+          `输入：${trace.input?.source || "unknown"} · ${trace.input?.text || ""}`,
+          `Planner：${trace.planner_output?.existing_action_id || trace.planner_output?.open_plan?.action_type || "intent seed"}`,
+          `知识查询：${trace.knowledge_query?.query_text || "无"}`,
+          `证据：${(trace.evidence || []).map((item) => item.fact_id).join(", ") || "无"}`,
+          `披露：${trace.disclosure?.mode || "无"}`,
+          `状态变化：${(trace.state_diff?.learned_fact_ids || []).join(", ") || "无新增事实"}`,
+          `Grounding：${trace.grounding?.accepted === false ? "rejected" : trace.grounding ? "accepted" : "pending"}`,
+        ].join("\n")
+      : "尚无已结算回合。";
     $("#threat-clocks").innerHTML = data.threats.map((threat) => line(threat.name, `${threat.progress}%`)).join("");
     $("#event-queue").innerHTML = data.event_queue.length
       ? data.event_queue.map((event) => line(event.type, event.time.slice(11, 16))).join("")

@@ -12,7 +12,7 @@ from .context import remember_visible_beats
 from .engine import GameEngine
 from .llm import LLMSettings, LLMUnavailable, OpenAICompatibleLLM, RoutedLLM, RoutingMode
 from .models import NarrativeBeat, RuleChoice, WorldState
-from .scenario import DEFAULT_SCENARIO_ID, create_initial_state, load_scenarios
+from .scenario import DEFAULT_SCENARIO_ID, create_initial_state, load_scenarios, upgrade_world_state
 from .storage import SQLiteRepository
 
 
@@ -120,7 +120,8 @@ class GameService:
     def get_session(self, session_id: str) -> dict[str, Any]:
         with self._lock:
             state = self.repository.load(session_id)
-            _, engine = self._scenario_and_engine(state.scenario_id)
+            scenario, engine = self._scenario_and_engine(state.scenario_id)
+            upgrade_world_state(state, scenario)
             return engine.public_view(state)
 
     def act(
@@ -136,7 +137,8 @@ class GameService:
         narration_job: tuple[GameEngine, WorldState] | None = None
         with self._lock:
             state = self.repository.load(session_id)
-            _, engine = self._scenario_and_engine(state.scenario_id)
+            scenario, engine = self._scenario_and_engine(state.scenario_id)
+            upgrade_world_state(state, scenario)
             next_state, resolution = engine.play(
                 state,
                 action_id=action_id,
@@ -164,6 +166,7 @@ class GameService:
 
         with self._lock:
             current = self.repository.load(snapshot.session_id)
+            upgrade_world_state(current, engine.scenario)
             current_sequence = current.narrative_sequence
             if (
                 current.version != sequence.state_version
@@ -188,6 +191,12 @@ class GameService:
                 current_sequence.beats.append(beat)
                 generated_beats.append(beat)
             current_sequence.status = "ready" if generated else "fallback"
+            current_sequence.grounding_report = sequence.grounding_report
+            if current_sequence.turn_trace_id and sequence.grounding_report is not None:
+                for trace in reversed(current.turn_traces):
+                    if trace.get("id") == current_sequence.turn_trace_id:
+                        trace["grounding"] = sequence.grounding_report
+                        break
             remember_visible_beats(current, current_sequence, generated_beats)
             if call_record is not None:
                 current.agent_calls.append(call_record)
@@ -196,7 +205,8 @@ class GameService:
     def narrative_status(self, session_id: str, sequence_id: str) -> dict[str, Any]:
         with self._lock:
             state = self.repository.load(session_id)
-            _, engine = self._scenario_and_engine(state.scenario_id)
+            scenario, engine = self._scenario_and_engine(state.scenario_id)
+            upgrade_world_state(state, scenario)
             sequence = engine.public_view(state)["narrative_sequence"]
             return {
                 **sequence,
@@ -207,7 +217,8 @@ class GameService:
     def developer_view(self, session_id: str) -> dict[str, Any]:
         with self._lock:
             state = self.repository.load(session_id)
-            _, engine = self._scenario_and_engine(state.scenario_id)
+            scenario, engine = self._scenario_and_engine(state.scenario_id)
+            upgrade_world_state(state, scenario)
             return engine.developer_view(state)
 
     def llm_configuration(self, *, refresh: bool = False) -> dict[str, Any]:
@@ -312,8 +323,8 @@ class GameService:
             "default_scenario": self.default_scenario_id,
             "scenarios": list(self.scenarios),
             "ruleset": "coc7_quickstart_subset_v1",
-            "action_model": "llm_first_intent_safe_effects_v2",
-            "narrative_mode": "async_beats_v1",
+            "action_model": "validated_agent_runtime_v2",
+            "narrative_mode": "outcome_grounded_async_beats_v2",
             "llm": {
                 "enabled": self.llm.enabled,
                 "model": self.llm.settings.model,

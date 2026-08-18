@@ -4,7 +4,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .context import context_relevance_score, recent_visible_context, substantially_repeats
+from .agent_runtime.contracts import OutcomeEnvelope
+from .agent_runtime.outcome import GroundingValidator
+from .context import recent_visible_context, substantially_repeats
 from .harness import StructuredHarness
 from .llm import OpenAICompatibleLLM, record_agent_call
 from .models import (
@@ -50,6 +52,7 @@ class Narrator:
     def __init__(self, llm: OpenAICompatibleLLM, scenario: ScenarioDefinition):
         self.llm = llm
         self.scenario = scenario
+        self.grounding_validator = GroundingValidator(scenario)
 
     def narrate(
         self,
@@ -76,22 +79,24 @@ class Narrator:
 
         location_id = state.entities[state.player.entity_id].location
         location = state.entities[location_id] if location_id else None
-        visible_facts = [
-            {
-                "subject": state.facts[fact_id].subject,
-                "predicate": state.facts[fact_id].predicate,
-                "value": state.facts[fact_id].value,
-            }
-            for fact_id in sorted(state.player_known_fact_ids)
-            if fact_id in state.facts
-        ]
+        outcome_payload = resolution.outcome_envelope or {
+            "canonical_seed": base,
+            "disclosed_facts": [],
+            "visible_events": event_texts,
+            "scene": {
+                "id": location.id if location else None,
+                "name": location.name if location else "未知地点",
+                "description": location.attributes.get("description", "") if location else "",
+            },
+        }
         payload: dict[str, Any] = {
             "location": location.name if location else "未知地点",
             "location_description": location.attributes.get("description", "") if location else "",
             "resolved_action": action.label,
             "mechanical_result": resolution.check.model_dump(mode="json") if resolution.check else None,
             "canonical_narrative_seed": base,
-            "visible_facts": visible_facts,
+            "outcome_envelope": outcome_payload,
+            "visible_facts": outcome_payload.get("disclosed_facts", []),
             "visible_events": event_texts,
             "tone": "1927 年调查恐怖，克制、具象、不夸张",
             "required_output": {"narrative": "2-4 short Chinese paragraphs"},
@@ -107,13 +112,25 @@ class Narrator:
                 system=system,
                 user_payload=payload,
             )
+            narrative = outcome.value.narrative
+            validation = "accepted"
+            if resolution.outcome_envelope is not None:
+                envelope = OutcomeEnvelope.model_validate(resolution.outcome_envelope)
+                approved, grounding = self.grounding_validator.validate(
+                    state,
+                    envelope,
+                    [narrative],
+                )
+                if not approved:
+                    narrative = base
+                    validation = "rejected"
             record_agent_call(
                 state,
                 role="narrator",
                 result=outcome.llm_result,
-                validation="accepted",
+                validation=validation,
             )
-            return outcome.value.narrative
+            return narrative
         except Exception:
             record_agent_call(state, role="narrator", result=None, validation="fallback", error=True)
             return base
@@ -129,60 +146,52 @@ class Narrator:
 
         location_id = state.entities[state.player.entity_id].location
         location = state.entities[location_id] if location_id else None
-        present_entities = [
-            {
-                "id": entity.id,
-                "name": entity.name,
-                "type": entity.type.value,
-                "role": entity.attributes.get("role"),
-            }
-            for entity in state.entities.values()
-            if entity.active
-            and entity.location == location_id
-            and entity.id != state.player.entity_id
-        ]
-        known_fact_ids = sorted(state.player_known_fact_ids)[-8:]
-        current_topic = sequence.player_text or sequence.canonical_seed
-        prior_visible_history = recent_visible_context(
-            state,
-            exclude_sequence_id=sequence.id,
-            query=sequence.player_text or sequence.canonical_seed,
-            immediate_entries=0,
-        )
+        if sequence.outcome_envelope is not None:
+            outcome_envelope = OutcomeEnvelope.model_validate(sequence.outcome_envelope)
+        else:
+            present = [
+                {"id": entity.id, "name": entity.name, "type": entity.type.value}
+                for entity in state.entities.values()
+                if entity.active
+                and entity.location == location_id
+                and entity.id != state.player.entity_id
+            ]
+            outcome_envelope = OutcomeEnvelope(
+                turn_id=sequence.turn_trace_id or sequence.id,
+                action_id=sequence.action_id or "legacy_action",
+                action_label=sequence.action_label or "继续当前场景",
+                action_type=sequence.action_type or ActionType.OTHER,
+                player_text=sequence.player_text,
+                accepted=True,
+                mechanical_result=sequence.mechanical_result,
+                canonical_seed=sequence.canonical_seed,
+                scene={
+                    "id": location.id if location else None,
+                    "name": location.name if location else "未知地点",
+                    "description": location.attributes.get("description", "") if location else "",
+                },
+                present_entities=present,
+            )
+        present_entities = outcome_envelope.present_entities
         dedupe_history = recent_visible_context(
             state,
             exclude_sequence_id=sequence.id,
         )
         recent_visible_facts = [
-            {
-                "subject": state.facts[fact_id].subject,
-                "predicate": state.facts[fact_id].predicate,
-                "value": state.facts[fact_id].value,
-            }
-            for fact_id in known_fact_ids
-            if fact_id in state.facts
-            and context_relevance_score(
-                current_topic,
-                (
-                    f"{state.facts[fact_id].subject} "
-                    f"{state.facts[fact_id].predicate} "
-                    f"{state.facts[fact_id].value}"
-                ),
-            )
-            > 0
+            item.model_dump(mode="json") for item in outcome_envelope.disclosed_facts
         ]
         light_dialogue = (
             sequence.action_type == ActionType.TALK
             and (sequence.mechanical_result or {}).get("outcome") == "AUTOMATIC"
-            and not prior_visible_history
-            and not recent_visible_facts
+            and not outcome_envelope.disclosed_facts
         )
         payload: dict[str, Any] = {
-            "location": location.name if location else "未知地点",
+            "outcome_envelope": outcome_envelope.model_dump(mode="json"),
+            "location": outcome_envelope.scene.get("name", "未知地点"),
             "location_description": (
                 ""
                 if light_dialogue
-                else location.attributes.get("description", "") if location else ""
+                else outcome_envelope.scene.get("description", "")
             ),
             "resolved_action": sequence.action_label,
             "player_text": sequence.player_text,
@@ -190,9 +199,9 @@ class Narrator:
             "continues_previous": sequence.continues_previous,
             "mechanical_result": sequence.mechanical_result,
             "canonical_narrative_seed": sequence.canonical_seed,
-            "authored_beats": [beat.text for beat in sequence.beats],
+            "authored_beats": outcome_envelope.canonical_beats,
             "present_entities": present_entities,
-            "recent_visible_history": prior_visible_history,
+            "recent_visible_history": [],
             "recent_visible_facts": recent_visible_facts,
             "required_output": {
                 "beats": (
@@ -227,13 +236,12 @@ class Narrator:
         )
         system = (
             "你是 Living Tabletop 的异步 Narrator。补充已经结算完成的场景表现。"
-            "当前轮的 player_text、resolved_action、mechanical_result、canonical_narrative_seed 和 authored_beats 拥有最高优先级；"
-            "必须只延展当前轮的具体话题与结果。recent_visible_history 仅用于避免矛盾，绝不能用旧话题替换当前话题。"
-            "recent_visible_facts 已按当前话题检索；不得主动把未出现在当前轮输入中的案件、委托或线索带入闲聊。"
-            "只能描述输入中已经发生且玩家可见的事情；不得新增线索、人物、物品、结果或世界状态。"
-            "recent_visible_history 是此前已经对玩家演出的内容：hard_canon 与 soft_canon 都不得被后文否认，"
-            "dialogue_claim 只代表角色说过，不保证台词内容属实。不得让 present_entities 以外的人物在场行动或说话。"
-            "不要复述 authored_beats 或 recent_visible_history 中已经出现的段落，不要给玩家规定下一步行动。保持第二人称、克制、具象。"
+            "outcome_envelope 拥有最高优先级并且是唯一的事实边界；只能延展其中的当前动作、机械结果、disclosed_facts、可见事件、场景和在场人物。"
+            "不得使用此前轮次的已知事实补写当前轮，不得猜测 NPC 知识，不得把案件、委托或线索带入无关闲聊。"
+            "只能描述已经发生且玩家可见的事情；不得新增线索、人物、物品、因果结论、结果或世界状态。"
+            "若 disclosed_facts 非空，不得替 NPC 增加 outcome_envelope 中没有的台词；只可原样复述已给出的事实台词，并用不引入新物品或关系的神态、停顿和环境感受扩写。"
+            "不得让 present_entities 以外的人物在场行动或说话。不要复述 authored_beats，不要给玩家规定下一步行动。"
+            "保持第二人称、克制、具象。"
             f"{dialogue_instruction}"
             f"{continuation_instruction}"
             f"{light_dialogue_instruction}"
@@ -264,11 +272,17 @@ class Narrator:
                 beats.append(beat)
                 if len(beats) >= limit:
                     break
+            beats, grounding = self.grounding_validator.validate(
+                state,
+                outcome_envelope,
+                beats,
+            )
+            sequence.grounding_report = grounding.model_dump(mode="json")
             record_agent_call(
                 state,
                 role="narrator",
                 result=outcome.llm_result,
-                validation="accepted",
+                validation="accepted" if grounding.accepted else "rejected",
             )
             return beats
         except Exception:

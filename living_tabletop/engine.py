@@ -7,6 +7,18 @@ import heapq
 import re
 from typing import Any
 
+from .agent_runtime import (
+    ContextAssembler,
+    DisclosurePolicy,
+    IntentSeed,
+    KnowledgeResolver,
+    OutcomeBuilder,
+    PlanValidator,
+    PlayerIntentEnvelope,
+    TurnPlanner,
+    TurnTrace,
+    ValidatedActionPlan,
+)
 from .agents import Narrator
 from .context import remember_visible_beats
 from .director import Director
@@ -41,12 +53,96 @@ class GameEngine:
         self.kernel = WorldKernel(scenario)
         self.rules = RuleEngine()
         self.llm = llm or OpenAICompatibleLLM()
+        self.turn_planner = TurnPlanner(self.llm, scenario)
+        self.plan_validator = PlanValidator()
+        self.knowledge_resolver = KnowledgeResolver()
+        self.disclosure_policy = DisclosurePolicy()
+        self.outcome_builder = OutcomeBuilder()
         self.keeper = Keeper(self.llm, scenario)
         self.narrator = Narrator(self.llm, scenario)
         self.director = Director(scenario, self.kernel)
         self.scene_projection = SceneProjectionAdapter(scenario, self.kernel)
         self._actions = {action.id: action for action in scenario.actions}
         self._clues = {clue.id: clue for clue in scenario.clues}
+
+    def _intent_envelope(
+        self,
+        state: WorldState,
+        *,
+        action: ActionDefinition | None = None,
+        text: str | None = None,
+        utterance: str | None = None,
+    ) -> PlayerIntentEnvelope:
+        if action is not None:
+            rendered_text = (utterance or text or action.dialogue_text or action.label).strip()
+            seed = IntentSeed(
+                action_id=action.id,
+                label=action.label,
+                action_type=action.type,
+                target_entity_id=action.target,
+                hard_constraints={
+                    "authored": True,
+                    "duration_minutes": action.duration_minutes,
+                    "risk": action.risk,
+                },
+            )
+            source = "option"
+        else:
+            rendered_text = (text or "").strip()
+            seed = None
+            source = "free_text"
+        if not rendered_text:
+            raise ValueError("player intent text cannot be blank")
+        digest = hashlib.sha1(
+            f"{state.session_id}:{state.version}:{source}:{rendered_text}".encode("utf-8")
+        ).hexdigest()[:12]
+        return PlayerIntentEnvelope(
+            id=f"intent_{state.version:06d}_{digest}",
+            source=source,
+            text=rendered_text,
+            actor_id=state.player.entity_id,
+            scene_id=state.entities[state.player.entity_id].location,
+            intent_seed=seed,
+        )
+
+    @staticmethod
+    def _append_turn_trace(
+        state: WorldState,
+        validated: ValidatedActionPlan,
+        *,
+        context_summary: dict[str, Any] | None = None,
+    ) -> str:
+        trace_id = f"turn_trace_{state.version:06d}_{len(state.turn_traces) + 1:04d}"
+        action_id = validated.existing_action_id
+        if action_id is None and validated.open_plan is not None:
+            digest = hashlib.sha1(
+                f"{state.version}:{validated.open_plan.goal}".encode("utf-8")
+            ).hexdigest()[:12]
+            action_id = f"open__{digest}"
+        trace = TurnTrace(
+            id=trace_id,
+            state_version_before=state.version,
+            input=validated.envelope.model_dump(mode="json"),
+            context_summary=context_summary or {},
+            planner_output=validated.planner_output,
+            validation={"accepted": True, "contract": "ValidatedActionPlan"},
+            knowledge_query=(
+                validated.knowledge_query.model_dump(mode="json")
+                if validated.knowledge_query
+                else None
+            ),
+            evidence=[item.model_dump(mode="json") for item in validated.evidence],
+            disclosure=(
+                validated.disclosure.model_dump(mode="json")
+                if validated.disclosure
+                else None
+            ),
+            action_id=action_id,
+        )
+        state.turn_traces.append(trace.model_dump(mode="json"))
+        if len(state.turn_traces) > 100:
+            state.turn_traces = state.turn_traces[-100:]
+        return trace_id
 
     def interpret(self, state: WorldState, *, action_id: str | None = None, text: str | None = None) -> ActionIntent:
         available = self.kernel.available_actions(state)
@@ -122,57 +218,7 @@ class GameEngine:
             )
 
         intent = self.interpret(working, action_id=action_id, text=text)
-        open_plan: OpenActionPlan | None = None
-        if recorded_open_plan is not None:
-            open_plan = OpenActionPlan.model_validate(recorded_open_plan)
-            intent = ActionIntent(
-                action_id=None,
-                action_type=open_plan.action_type,
-                target=open_plan.target_entity_id,
-                content=text or open_plan.goal,
-                goal=open_plan.goal,
-                confidence=1.0,
-                source="open",
-            )
-        elif intent.action_id is None and intent.source == "player_text":
-            decision = self.keeper.adjudicate(
-                working,
-                intent,
-                self.kernel.available_actions(working),
-            )
-            if decision.existing_action_id is not None:
-                action = self._actions[decision.existing_action_id]
-                intent = ActionIntent(
-                    action_id=action.id,
-                    action_type=action.type,
-                    target=action.target,
-                    content=text,
-                    goal=intent.goal,
-                    confidence=decision.confidence,
-                    source="llm",
-                )
-            else:
-                open_plan = decision.open_plan
-                intent = ActionIntent(
-                    action_id=None,
-                    action_type=open_plan.action_type,
-                    target=open_plan.target_entity_id,
-                    content=text,
-                    goal=open_plan.goal,
-                    confidence=decision.confidence,
-                    source="llm",
-                )
-
-        if open_plan is not None:
-            return self._execute_open_plan(
-                working,
-                intent,
-                open_plan,
-                text=text,
-                interactive_rules=interactive_rules,
-            )
-
-        if intent.action_id is None:
+        if intent.action_id is None and intent.source != "player_text" and recorded_open_plan is None:
             resolution = ActionResolution(
                 accepted=False,
                 needs_clarification=True,
@@ -182,8 +228,111 @@ class GameEngine:
             )
             return working, resolution
 
+        available_actions = self.kernel.available_actions(working)
+        open_plan: OpenActionPlan | None = None
+        context_summary: dict[str, Any] = {}
+        if recorded_open_plan is not None:
+            open_plan = OpenActionPlan.model_validate(recorded_open_plan)
+            envelope = self._intent_envelope(working, text=text or open_plan.goal)
+            validated = ValidatedActionPlan(
+                envelope=envelope,
+                open_plan=open_plan,
+                planner_output={"source": "recorded_open_plan"},
+            )
+            intent = ActionIntent(
+                action_id=None,
+                action_type=open_plan.action_type,
+                target=open_plan.target_entity_id,
+                content=envelope.text,
+                goal=open_plan.goal,
+                confidence=1.0,
+                source="open",
+            )
+        elif intent.action_id is None and intent.source == "player_text":
+            envelope = self._intent_envelope(working, text=text)
+            decision, assembled_context = self.turn_planner.plan(
+                working,
+                envelope,
+                available_actions,
+            )
+            context_summary = ContextAssembler.trace_summary(assembled_context)
+            if decision.existing_action_id is not None:
+                action = self._actions[decision.existing_action_id]
+                validated = ValidatedActionPlan(
+                    envelope=envelope,
+                    existing_action_id=action.id,
+                    planner_output=decision.model_dump(mode="json"),
+                )
+                intent = ActionIntent(
+                    action_id=action.id,
+                    action_type=action.type,
+                    target=action.target,
+                    content=envelope.text,
+                    goal=envelope.text,
+                    confidence=decision.confidence,
+                    source="llm",
+                )
+            else:
+                planned = decision.open_plan
+                if planned is None:
+                    raise ValueError("TurnPlanner omitted open plan")
+                open_plan = self.plan_validator.materialize(decision)
+                evidence = []
+                disclosure = None
+                query = planned.knowledge_query
+                if query is not None:
+                    evidence = self.knowledge_resolver.retrieve(working, query)
+                    disclosure = self.disclosure_policy.decide(working, query, evidence)
+                    open_plan = self.disclosure_policy.apply(open_plan, disclosure)
+                validated = ValidatedActionPlan(
+                    envelope=envelope,
+                    open_plan=open_plan,
+                    planner_output=decision.model_dump(mode="json"),
+                    knowledge_query=query,
+                    evidence=evidence,
+                    disclosure=disclosure,
+                )
+                intent = ActionIntent(
+                    action_id=None,
+                    action_type=open_plan.action_type,
+                    target=open_plan.target_entity_id,
+                    content=envelope.text,
+                    goal=open_plan.goal,
+                    confidence=decision.confidence,
+                    source="llm",
+                )
+        else:
+            action = self._actions[intent.action_id]
+            envelope = self._intent_envelope(
+                working,
+                action=action,
+                text=text,
+                utterance=utterance,
+            )
+            validated = ValidatedActionPlan(
+                envelope=envelope,
+                existing_action_id=action.id,
+                planner_output={"source": "intent_seed", "action_id": action.id},
+            )
+
+        trace_id = self._append_turn_trace(
+            working,
+            validated,
+            context_summary=context_summary,
+        )
+        intent.turn_trace_id = trace_id
+
+        if open_plan is not None:
+            return self._execute_open_plan(
+                working,
+                intent,
+                open_plan,
+                text=envelope.text,
+                interactive_rules=interactive_rules,
+            )
+
         action = self._actions[intent.action_id]
-        presentation_text = text
+        presentation_text = envelope.text if envelope.source == "free_text" else text
         if utterance and action.type in {ActionType.TALK, ActionType.DECEIVE}:
             presentation_text = utterance.strip()
             action = action.model_copy(update={"dialogue_text": presentation_text})
@@ -207,6 +356,7 @@ class GameEngine:
         validate_predefined: bool,
         open_plan: OpenActionPlan | None = None,
     ) -> tuple[WorldState, ActionResolution]:
+        action = self._annotate_dialogue_disclosures(working, action)
         if validate_predefined:
             available, reason = self.kernel.action_is_available(working, action.id)
             if not available:
@@ -241,6 +391,7 @@ class GameEngine:
                     "action_id": action.id,
                     "intent_source": intent.source,
                     "player_text": text,
+                    "turn_trace_id": intent.turn_trace_id,
                     "interactive_rules": interactive_rules,
                     "open_plan": None,
                 },
@@ -290,10 +441,10 @@ class GameEngine:
                     location_before=location_before,
                     dynamic_action=(
                         action
-                        if action.id not in self._actions
-                        or action.dialogue_text != self._actions[action.id].dialogue_text
+                        if action.id not in self._actions or action != self._actions[action.id]
                         else None
                     ),
+                    turn_trace_id=intent.turn_trace_id,
                 )
                 self.kernel.append_event(
                     working,
@@ -325,7 +476,14 @@ class GameEngine:
                     luck_cost=luck_cost,
                     narrative_seed=working.last_narrative,
                     visible_events=visible_events,
+                    turn_trace_id=intent.turn_trace_id,
                     state_version=working.version,
+                )
+                self._mark_trace_pending(
+                    working,
+                    intent.turn_trace_id,
+                    action.id,
+                    events=working.event_log[log_start:],
                 )
                 working.narrative_sequence = self._build_narrative_sequence(
                     working,
@@ -345,6 +503,44 @@ class GameEngine:
             progress_before,
             location_before,
             log_start,
+        )
+
+    @staticmethod
+    def _annotate_dialogue_disclosures(
+        state: WorldState,
+        action: ActionDefinition,
+    ) -> ActionDefinition:
+        if action.type not in {ActionType.TALK, ActionType.DECEIVE} or not action.target:
+            return action
+        target = state.entities.get(action.target)
+        if target is None or target.type != EntityType.NPC:
+            return action
+        changed = False
+
+        def annotate(effects: list[Effect]) -> list[Effect]:
+            nonlocal changed
+            result = []
+            for effect in effects:
+                if effect.op != "reveal_fact" or effect.params.get("source_entity_id"):
+                    result.append(effect)
+                    continue
+                params = dict(effect.params)
+                params.update({"source_entity_id": action.target, "disclosure": True})
+                result.append(effect.model_copy(update={"params": params}))
+                changed = True
+            return result
+
+        success_effects = annotate(action.success_effects)
+        failure_effects = annotate(action.failure_effects)
+        always_effects = annotate(action.always_effects)
+        if not changed:
+            return action
+        return action.model_copy(
+            update={
+                "success_effects": success_effects,
+                "failure_effects": failure_effects,
+                "always_effects": always_effects,
+            }
         )
 
     def _execute_open_plan(
@@ -392,6 +588,17 @@ class GameEngine:
             ActionType.DISRUPT: "risk",
         }.get(plan.action_type, "other")
         target = plan.target_entity_id or plan.destination_entity_id
+        disclosure_effects = [
+            Effect(
+                op="reveal_fact",
+                params={
+                    "fact_id": fact_id,
+                    "source_entity_id": plan.knowledge_source_id,
+                    "disclosure": True,
+                },
+            )
+            for fact_id in plan.approved_fact_ids
+        ]
         return ActionDefinition(
             id=f"open__{digest}",
             label=plan.label,
@@ -402,6 +609,7 @@ class GameEngine:
             skill=plan.skill if plan.resolution == "check" else None,
             difficulty=plan.difficulty,
             pushable=plan.resolution == "check",
+            success_effects=disclosure_effects,
             success_text=plan.success_text,
             failure_text=plan.failure_text,
             suggest=False,
@@ -432,6 +640,7 @@ class GameEngine:
                 "action_id": action.id,
                 "intent_source": intent.source,
                 "player_text": text,
+                "turn_trace_id": intent.turn_trace_id,
                 "interactive_rules": interactive_rules,
                 "open_plan": plan.model_dump(mode="json"),
             },
@@ -447,6 +656,9 @@ class GameEngine:
                 "goal": plan.goal,
                 "action_type": plan.action_type.value,
                 "destination": plan.destination_name or plan.destination_entity_id,
+                "approved_fact_ids": plan.approved_fact_ids,
+                "knowledge_source_id": plan.knowledge_source_id,
+                "disclosure_mode": plan.disclosure_mode,
             },
             visible=True,
         )
@@ -924,6 +1136,7 @@ class GameEngine:
                 pending.progress_before,
                 pending.location_before,
                 len(state.event_log) - 1,
+                turn_trace_id=pending.turn_trace_id,
                 continues_previous_narrative=True,
             )
 
@@ -952,6 +1165,7 @@ class GameEngine:
                     pending.progress_before,
                     pending.location_before,
                     len(state.event_log),
+                    turn_trace_id=pending.turn_trace_id,
                     continues_previous_narrative=True,
                 )
             check = self._roll_action_check(state, action, pushed=True)
@@ -964,6 +1178,7 @@ class GameEngine:
                 pending.location_before,
                 len(state.event_log) - 1,
                 pushed_failure=not check.succeeded,
+                turn_trace_id=pending.turn_trace_id,
                 continues_previous_narrative=True,
             )
 
@@ -977,6 +1192,7 @@ class GameEngine:
             pending.progress_before,
             pending.location_before,
             len(state.event_log) - 1,
+            turn_trace_id=pending.turn_trace_id,
             continues_previous_narrative=True,
         )
 
@@ -991,6 +1207,7 @@ class GameEngine:
         log_start: int,
         *,
         pushed_failure: bool = False,
+        turn_trace_id: str | None = None,
         continues_previous_narrative: bool = False,
     ) -> tuple[WorldState, ActionResolution]:
         effects = action.success_effects if check.succeeded else action.failure_effects
@@ -1044,6 +1261,24 @@ class GameEngine:
             sanity_check=state.sanity_checks[-1] if len(state.sanity_checks) > sanity_start else None,
             narrative_seed=action.success_text if check.succeeded else failure_text,
             visible_events=visible_events,
+            disclosed_fact_ids=(
+                [
+                    str(effect.params["fact_id"])
+                    for effect in action.success_effects
+                    if effect.op == "reveal_fact" and effect.params.get("disclosure")
+                ]
+                if check.succeeded
+                else []
+            ),
+            knowledge_source_id=next(
+                (
+                    str(effect.params["source_entity_id"])
+                    for effect in action.success_effects
+                    if effect.op == "reveal_fact" and effect.params.get("source_entity_id")
+                ),
+                None,
+            ),
+            turn_trace_id=turn_trace_id,
             continues_previous_narrative=continues_previous_narrative,
             state_version=state.version + 1,
         )
@@ -1069,6 +1304,7 @@ class GameEngine:
         location_before: str | None,
         log_start: int,
         *,
+        turn_trace_id: str | None = None,
         continues_previous_narrative: bool = False,
     ) -> tuple[WorldState, ActionResolution]:
         check = CheckResult(required=False, outcome=CheckOutcome.INTERRUPTED, succeeded=False)
@@ -1088,6 +1324,15 @@ class GameEngine:
             interrupting_event_id=interrupting_event_id,
             narrative_seed=action.interrupted_text,
             visible_events=visible_events,
+            turn_trace_id=turn_trace_id
+            or next(
+                (
+                    str(event.payload.get("turn_trace_id"))
+                    for event in reversed(state.event_log[log_start:])
+                    if event.type == "action_started" and event.payload.get("turn_trace_id")
+                ),
+                None,
+            ),
             continues_previous_narrative=continues_previous_narrative,
             state_version=state.version + 1,
         )
@@ -1133,6 +1378,76 @@ class GameEngine:
             return [Effect(op="advance_threat", params={"threat_id": threat_id, "amount": amount})]
         return [Effect(op="modify_player", params={"field": "stress", "delta": 1})]
 
+    @staticmethod
+    def _mark_trace_pending(
+        state: WorldState,
+        trace_id: str | None,
+        action_id: str,
+        *,
+        events: list | None = None,
+    ) -> None:
+        if trace_id is None:
+            return
+        for trace in reversed(state.turn_traces):
+            if trace.get("id") == trace_id:
+                trace["status"] = "pending_rule_choice"
+                trace["action_id"] = action_id
+                if events is not None:
+                    trace["kernel_events"] = [
+                        event.model_dump(mode="json") for event in events
+                    ]
+                return
+
+    @staticmethod
+    def _finalize_turn_trace(
+        state: WorldState,
+        *,
+        trace_id: str | None,
+        action: ActionDefinition,
+        resolution: ActionResolution,
+        events: list,
+        location_before: str | None,
+    ) -> None:
+        if trace_id is None:
+            return
+        location_after = state.entities[state.player.entity_id].location
+        for trace in reversed(state.turn_traces):
+            if trace.get("id") != trace_id:
+                continue
+            previous_events = list(trace.get("kernel_events") or [])
+            combined_events = previous_events + [event.model_dump(mode="json") for event in events]
+            unique_events = {
+                str(event.get("id")): event
+                for event in combined_events
+                if event.get("id") is not None
+            }
+            trace.update(
+                {
+                    "status": "resolved" if resolution.accepted else "rejected",
+                    "action_id": action.id,
+                    "kernel_events": list(unique_events.values()),
+                    "state_diff": {
+                        "location": {"before": location_before, "after": location_after},
+                        "learned_fact_ids": sorted(
+                            {
+                                str(event.payload.get("fact_id") or event.target)
+                                for event in events
+                                if event.type == "player_learned_fact"
+                            }
+                        ),
+                        "changed_flags": sorted(
+                            {
+                                str(event.target)
+                                for event in events
+                                if event.type == "flag_changed" and event.target
+                            }
+                        ),
+                    },
+                    "outcome": resolution.outcome_envelope,
+                }
+            )
+            return
+
     def _finish_action(
         self,
         state: WorldState,
@@ -1143,6 +1458,15 @@ class GameEngine:
     ) -> tuple[WorldState, ActionResolution]:
         location_after = state.entities[state.player.entity_id].location
         new_events = state.event_log[log_start:]
+        trace_id = resolution.turn_trace_id or next(
+            (
+                str(event.payload.get("turn_trace_id"))
+                for event in new_events
+                if event.type == "action_started" and event.payload.get("turn_trace_id")
+            ),
+            None,
+        )
+        resolution.turn_trace_id = trace_id
         major_event = any(
             event.type in {
                 "threat_threshold_crossed",
@@ -1166,6 +1490,37 @@ class GameEngine:
                 resolution.narrative_seed = ending.narrative
         else:
             state.last_narrative = resolution.narrative_seed
+
+        completed_events = state.event_log[log_start:]
+        outcome = self.outcome_builder.build(
+            state,
+            action,
+            resolution,
+            completed_events,
+            turn_id=trace_id or f"legacy_turn_{state.version:06d}",
+        )
+        if outcome.player_text is None and trace_id is not None:
+            trace_input = next(
+                (
+                    trace.get("input", {})
+                    for trace in reversed(state.turn_traces)
+                    if trace.get("id") == trace_id
+                ),
+                {},
+            )
+            outcome.player_text = trace_input.get("text")
+        resolution.outcome_envelope = outcome.model_dump(mode="json")
+        resolution.disclosed_fact_ids = [item.fact_id for item in outcome.disclosed_facts]
+        if outcome.disclosed_facts and resolution.knowledge_source_id is None:
+            resolution.knowledge_source_id = outcome.disclosed_facts[0].source_entity_id
+        self._finalize_turn_trace(
+            state,
+            trace_id=trace_id,
+            action=action,
+            resolution=resolution,
+            events=completed_events,
+            location_before=location_before,
+        )
 
         state.version += 1
         resolution.state_version = state.version
@@ -1332,6 +1687,8 @@ class GameEngine:
             beats=beats,
             canonical_seed=resolution.narrative_seed,
             mechanical_result=resolution.check.model_dump(mode="json") if resolution.check else None,
+            outcome_envelope=resolution.outcome_envelope,
+            turn_trace_id=resolution.turn_trace_id,
             created_at=state.world_time,
         )
 
@@ -1494,7 +1851,7 @@ class GameEngine:
                 "presentation": self.scenario.presentation.model_dump(mode="json"),
                 "source": self.scenario.source.model_dump(mode="json") if self.scenario.source else None,
                 "ruleset": "coc7_quickstart_subset_v1",
-                "narrative_mode": "async_beats_v1",
+                "narrative_mode": "outcome_grounded_async_beats_v2",
             },
             "version": state.version,
             "status": state.status.value,
@@ -1591,4 +1948,5 @@ class GameEngine:
                 entry.model_dump(mode="json") for entry in state.visible_history[-20:]
             ],
             "agent_calls": [call.model_dump(mode="json") for call in state.agent_calls],
+            "turn_traces": state.turn_traces[-30:],
         }

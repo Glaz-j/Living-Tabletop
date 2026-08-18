@@ -198,6 +198,47 @@ def validate_scenario_integrity(scenario: ScenarioDefinition) -> None:
         raise ScenarioIntegrityError("; ".join(errors))
 
 
+def upgrade_world_state(state: WorldState, scenario: ScenarioDefinition) -> bool:
+    """Idempotently add new static scenario records without overwriting played state."""
+
+    changed = False
+    for entity in scenario.entities:
+        if entity.id not in state.entities:
+            state.entities[entity.id] = entity.model_copy(deep=True)
+            changed = True
+    for fact in scenario.facts:
+        if fact.id not in state.facts:
+            state.facts[fact.id] = fact.model_copy(deep=True)
+            changed = True
+    for key, value in scenario.initial_flags.items():
+        if key not in state.flags:
+            state.flags[key] = deepcopy(value)
+            changed = True
+
+    relationship_keys = {
+        (item.subject, item.relation, item.object) for item in state.relationships
+    }
+    for relationship in scenario.relationships:
+        key = (relationship.subject, relationship.relation, relationship.object)
+        if key not in relationship_keys:
+            state.relationships.append(relationship.model_copy(deep=True))
+            relationship_keys.add(key)
+            changed = True
+
+    knowledge_keys = {(item.knower_id, item.fact_id) for item in state.npc_knowledge}
+    for knowledge in scenario.npc_knowledge:
+        key = (knowledge.knower_id, knowledge.fact_id)
+        if (
+            key not in knowledge_keys
+            and knowledge.knower_id in state.entities
+            and knowledge.fact_id in state.facts
+        ):
+            state.npc_knowledge.append(knowledge.model_copy(deep=True))
+            knowledge_keys.add(key)
+            changed = True
+    return changed
+
+
 def _add_graph_movement_actions(scenario: ScenarioDefinition) -> None:
     locations = {entity.id: entity for entity in scenario.entities if entity.type == EntityType.LOCATION}
     existing = {action.id for action in scenario.actions}

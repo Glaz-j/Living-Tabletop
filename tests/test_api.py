@@ -26,7 +26,7 @@ def test_health_does_not_expose_secret(tmp_path):
     assert response.status_code == 200
     assert response.json()["llm"]["api_key_configured"] is False
     assert response.json()["llm"]["max_retries"] == 1
-    assert response.json()["action_model"] == "llm_first_intent_safe_effects_v2"
+    assert response.json()["action_model"] == "validated_agent_runtime_v2"
     assert "api_key" not in response.text.replace("api_key_configured", "")
 
 

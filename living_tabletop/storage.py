@@ -92,6 +92,7 @@ class SQLiteRepository:
         payload.pop("narrative_sequence", None)
         payload.pop("visible_history", None)
         payload.pop("agent_calls", None)
+        payload.pop("turn_traces", None)
         raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
