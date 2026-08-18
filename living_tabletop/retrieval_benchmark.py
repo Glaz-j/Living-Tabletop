@@ -94,12 +94,10 @@ def benchmark_strategy(
     queries = [(item, KnowledgeQuery.model_validate(item["query"])) for item in cases]
 
     # Warm caches and Python code paths without counting the warm-up.
+    rss_before = _rss_bytes()
     for _item, query in queries:
         resolver.retrieve(state, query)
 
-    gc.collect()
-    rss_before = _rss_bytes()
-    tracemalloc.start()
     start_cpu = time.process_time_ns()
     latencies_ms: list[float] = []
     latest_results: dict[str, list[str]] = {}
@@ -110,9 +108,22 @@ def benchmark_strategy(
             latencies_ms.append((time.perf_counter_ns() - started) / 1_000_000)
             latest_results[item["id"]] = [candidate.fact_id for candidate in candidates]
     cpu_ms = (time.process_time_ns() - start_cpu) / 1_000_000
-    _current, peak_allocated = tracemalloc.get_traced_memory()
+
+    # Measure a single-query peak separately so benchmark bookkeeping is excluded.
+    gc.collect()
+    transient_peak = 0
+    tracemalloc.start()
+    for _item, query in queries:
+        before, _previous_peak = tracemalloc.get_traced_memory()
+        tracemalloc.reset_peak()
+        measured_candidates = resolver.retrieve(state, query)
+        _current, query_peak = tracemalloc.get_traced_memory()
+        transient_peak = max(transient_peak, max(0, query_peak - before))
+        del measured_candidates
     tracemalloc.stop()
     rss_after = _rss_bytes()
+    cache_kib = resolver.cache_size_bytes() / 1024
+    transient_kib = transient_peak / 1024
 
     case_results: list[dict[str, Any]] = []
     tag_metrics: dict[str, list[float]] = defaultdict(list)
@@ -156,7 +167,9 @@ def benchmark_strategy(
         "latency_ms_p95": _percentile(latencies_ms, 0.95),
         "throughput_queries_per_second": len(latencies_ms) / max(0.000001, sum(latencies_ms) / 1000),
         "cpu_ms_total": cpu_ms,
-        "peak_python_alloc_kib": peak_allocated / 1024,
+        "peak_python_alloc_kib": transient_kib,
+        "cache_index_kib": cache_kib,
+        "retrieval_memory_kib": transient_kib + cache_kib,
         "rss_delta_kib": (
             max(0, rss_after - rss_before) / 1024
             if rss_before is not None and rss_after is not None
@@ -196,12 +209,12 @@ def run_benchmark(
             item["aggregate"]["unknown_accuracy"],
             -item["aggregate"]["forbidden_hit_count"],
             -item["aggregate"]["latency_ms_p95"],
-            -item["aggregate"]["peak_python_alloc_kib"],
+            -item["aggregate"]["retrieval_memory_kib"],
         ),
     )
     raw_eval = eval_path.read_bytes()
     return {
-        "benchmark_version": 1,
+        "benchmark_version": 2,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "eval_path": str(eval_path),
         "eval_sha256": hashlib.sha256(raw_eval).hexdigest(),
@@ -226,13 +239,13 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- Iterations per case: {report['iterations_per_case']}",
         f"- Selected strategy: `{report['selected_strategy']}`",
         "",
-        "| Strategy | Exact | Top-1 | Macro F1 | Unknown | Forbidden | P50 ms | P95 ms | Peak KiB |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Strategy | Exact | Top-1 | Macro F1 | Unknown | Forbidden | P50 ms | P95 ms | Transient KiB | Cache KiB |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for item in report["results"]:
         aggregate = item["aggregate"]
         lines.append(
-            "| {strategy} | {exact:.1%} | {top1:.1%} | {f1:.1%} | {unknown:.1%} | {forbidden} | {p50:.3f} | {p95:.3f} | {peak:.1f} |".format(
+            "| {strategy} | {exact:.1%} | {top1:.1%} | {f1:.1%} | {unknown:.1%} | {forbidden} | {p50:.3f} | {p95:.3f} | {peak:.1f} | {cache:.1f} |".format(
                 strategy=item["strategy"],
                 exact=aggregate["exact_set_accuracy"],
                 top1=aggregate["top1_accuracy"],
@@ -242,6 +255,7 @@ def render_markdown(report: dict[str, Any]) -> str:
                 p50=aggregate["latency_ms_p50"],
                 p95=aggregate["latency_ms_p95"],
                 peak=aggregate["peak_python_alloc_kib"],
+                cache=aggregate["cache_index_kib"],
             )
         )
     lines.extend(["", "## Remaining failures", ""])
@@ -261,7 +275,7 @@ def render_markdown(report: dict[str, Any]) -> str:
             "## Measurement boundary",
             "",
             "Latency and memory cover deterministic retrieval only. Planner and Narrator generation are intentionally excluded so model-routing changes do not distort algorithm comparison.",
-            "`peak_python_alloc_kib` is measured with `tracemalloc`; RSS delta is also recorded in the JSON report when psutil is available.",
+            "`peak_python_alloc_kib` measures one retrieval call and excludes benchmark bookkeeping. Persistent cached-index payload is reported separately as `cache_index_kib`; RSS delta is also recorded in the JSON report when psutil is available.",
             "",
         ]
     )

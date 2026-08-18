@@ -48,4 +48,4 @@ python scripts/benchmark_retrieval.py --iterations 250
 
 `evals/retrieval/the_haunting_v1.json` 固定保存当前《科比特宅邸》的正例、未知问题、错误说话对象、关系错配、Planner 噪声与复合问题。`benchmark_retrieval.py` 对 legacy、纯 BM25、未拆分问题的类型混合和 `typed_hybrid_v2` 做相同输入的消融比较。
 
-报告同时记录 exact set、Top-1、Macro F1、未知拒答率、禁用事实命中数、P50/P95 延迟、吞吐量、Python 峰值分配和可用时的 RSS 增量。检索基准刻意不包含 Planner/Narrator 生成时间，避免不同模型路由掩盖算法本身的成本；真实 LLM 链路另由 `local_harness_smoke.py` 验证。
+报告同时记录 exact set、Top-1、Macro F1、未知拒答率、禁用事实命中数、P50/P95 延迟、吞吐量、单次检索峰值分配、持久索引负载和可用时的 RSS 增量。内存测量与延迟样本记账分离，避免 benchmark 自身的结果数组被误算成检索内存。检索基准刻意不包含 Planner/Narrator 生成时间，避免不同模型路由掩盖算法本身的成本；真实 LLM 链路另由 `local_harness_smoke.py` 验证。

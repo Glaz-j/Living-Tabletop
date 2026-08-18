@@ -5,7 +5,7 @@ import re
 from abc import ABC, abstractmethod
 from collections import Counter
 from dataclasses import dataclass
-from typing import Iterable, Literal
+from typing import Iterable, Literal, Sequence
 
 from ..context import context_relevance_score
 from ..models import OpenActionPlan, WorldState
@@ -189,6 +189,14 @@ class _KnowledgeDocument:
     focus: frozenset[str]
 
 
+@dataclass(frozen=True)
+class _KnowledgeIndex:
+    documents: tuple[_KnowledgeDocument, ...]
+    document_counts: dict[str, Counter[str]]
+    document_frequency: Counter[str]
+    average_length: float
+
+
 class KnowledgeRetriever(ABC):
     @abstractmethod
     def retrieve(self, state: WorldState, query: KnowledgeQuery) -> list[EvidenceCandidate]:
@@ -200,6 +208,7 @@ class KnowledgeResolver(KnowledgeRetriever):
 
     def __init__(self, strategy: RetrievalStrategy = "typed_hybrid_v2"):
         self.strategy = strategy
+        self._index_cache: dict[tuple[object, ...], _KnowledgeIndex] = {}
 
     @staticmethod
     def _entity_text(state: WorldState, entity_id: str) -> str:
@@ -237,12 +246,82 @@ class KnowledgeResolver(KnowledgeRetriever):
         return documents
 
     @staticmethod
-    def _bm25(query_terms: list[str], documents: list[_KnowledgeDocument]) -> dict[str, float]:
+    def _build_index(documents: Sequence[_KnowledgeDocument]) -> _KnowledgeIndex:
+        counts = {item.fact_id: Counter(item.terms) for item in documents}
+        frequency: Counter[str] = Counter()
+        for item in documents:
+            frequency.update(counts[item.fact_id].keys())
+        return _KnowledgeIndex(
+            documents=tuple(documents),
+            document_counts=counts,
+            document_frequency=frequency,
+            average_length=(
+                sum(len(item.terms) for item in documents) / len(documents)
+                if documents
+                else 0.0
+            ),
+        )
+
+    def _knowledge_signature(self, state: WorldState, addressee_id: str) -> tuple[object, ...]:
+        entries: list[tuple[object, ...]] = []
+        for entry in state.npc_knowledge:
+            if entry.knower_id != addressee_id:
+                continue
+            fact = state.facts.get(entry.fact_id)
+            if fact is None:
+                continue
+            value = entry.belief_value if entry.belief_value is not None else fact.value
+            subject = state.entities.get(fact.subject)
+            entries.append(
+                (
+                    entry.fact_id,
+                    fact.subject,
+                    subject.name if subject else "",
+                    fact.predicate,
+                    str(value),
+                    entry.source,
+                    entry.confidence,
+                    entry.concealed,
+                )
+            )
+        return (state.scenario_id, addressee_id, *entries)
+
+    def _cached_index(self, state: WorldState, addressee_id: str) -> _KnowledgeIndex:
+        signature = self._knowledge_signature(state, addressee_id)
+        cached = self._index_cache.get(signature)
+        if cached is not None:
+            return cached
+        index = self._build_index(self._documents(state, addressee_id))
+        if len(self._index_cache) >= 32:
+            self._index_cache.pop(next(iter(self._index_cache)))
+        self._index_cache[signature] = index
+        return index
+
+    def cache_size_bytes(self) -> int:
+        """Deterministic payload estimate for benchmark reporting."""
+
+        total = 0
+        for index in self._index_cache.values():
+            for document in index.documents:
+                total += len(document.text.encode("utf-8"))
+                total += sum(len(term.encode("utf-8")) for term in document.terms)
+                total += len(document.relations) * 16 + len(document.focus) * 16
+            total += sum(len(counts) * 24 for counts in index.document_counts.values())
+            total += len(index.document_frequency) * 24
+        return total
+
+    @staticmethod
+    def _bm25(
+        query_terms: list[str],
+        documents: Sequence[_KnowledgeDocument],
+        index: _KnowledgeIndex | None = None,
+    ) -> dict[str, float]:
         if not query_terms or not documents:
             return {}
         query_counts = Counter(query_terms)
-        document_counts = {item.fact_id: Counter(item.terms) for item in documents}
-        average_length = sum(len(item.terms) for item in documents) / len(documents)
+        prepared = index or KnowledgeResolver._build_index(documents)
+        document_counts = prepared.document_counts
+        average_length = prepared.average_length
         scores: dict[str, float] = {}
         for document in documents:
             counts = document_counts[document.fact_id]
@@ -252,7 +331,7 @@ class KnowledgeResolver(KnowledgeRetriever):
                 frequency = counts.get(term, 0)
                 if not frequency:
                     continue
-                document_frequency = sum(1 for other in documents if term in document_counts[other.fact_id])
+                document_frequency = prepared.document_frequency.get(term, 0)
                 inverse_frequency = math.log(1 + (len(documents) - document_frequency + 0.5) / (document_frequency + 0.5))
                 denominator = frequency + 1.2 * (1 - 0.75 + 0.75 * length / max(1.0, average_length))
                 score += query_frequency * inverse_frequency * (frequency * 2.2 / denominator)
@@ -303,7 +382,7 @@ class KnowledgeResolver(KnowledgeRetriever):
         return candidates[: query.max_results]
 
     def _retrieve_bm25(
-        self, query: KnowledgeQuery, documents: list[_KnowledgeDocument]
+        self, query: KnowledgeQuery, documents: Sequence[_KnowledgeDocument]
     ) -> list[EvidenceCandidate]:
         scores = self._bm25(_terms(" ".join([query.query_text, *query.predicate_hints])), documents)
         candidates = [
@@ -320,7 +399,12 @@ class KnowledgeResolver(KnowledgeRetriever):
         return candidates[: query.max_results]
 
     def _retrieve_typed(
-        self, query: KnowledgeQuery, documents: list[_KnowledgeDocument], *, atomic: bool
+        self,
+        query: KnowledgeQuery,
+        documents: Sequence[_KnowledgeDocument],
+        *,
+        atomic: bool,
+        index: _KnowledgeIndex | None = None,
     ) -> list[EvidenceCandidate]:
         atoms = query_atoms(query) if atomic else [KnowledgeQueryAtom(
             id="query",
@@ -349,7 +433,7 @@ class KnowledgeResolver(KnowledgeRetriever):
                         "time", "location", "identity", "quantity", "historical_pattern",
                         "weakness", "ownership", "burial",
                     })
-            bm25_scores = self._bm25(_terms(atom_text), documents)
+            bm25_scores = self._bm25(_terms(atom_text), documents, index)
             bm25_rank = {
                 fact_id: rank
                 for rank, (fact_id, _score) in enumerate(
@@ -449,6 +533,9 @@ class KnowledgeResolver(KnowledgeRetriever):
         return candidates[: query.max_results]
 
     def retrieve(self, state: WorldState, query: KnowledgeQuery) -> list[EvidenceCandidate]:
+        if self.strategy == "typed_hybrid_v2":
+            index = self._cached_index(state, query.addressee_id)
+            return self._retrieve_typed(query, index.documents, atomic=True, index=index)
         documents = self._documents(state, query.addressee_id)
         if self.strategy == "legacy":
             return self._retrieve_legacy(state, query, documents)
@@ -456,7 +543,7 @@ class KnowledgeResolver(KnowledgeRetriever):
             return self._retrieve_bm25(query, documents)
         if self.strategy == "typed_hybrid_v1":
             return self._retrieve_typed(query, documents, atomic=False)
-        return self._retrieve_typed(query, documents, atomic=True)
+        raise ValueError(f"Unsupported retrieval strategy: {self.strategy}")
 
 
 class DisclosurePolicy:
