@@ -1,0 +1,44 @@
+{
+  "passed": true,
+  "case_count": 7,
+  "cases": [
+    {
+      "case": "accept_failure",
+      "passed": true,
+      "outcome": "FAILURE"
+    },
+    {
+      "case": "spend_luck",
+      "passed": true,
+      "luck_spent": 10
+    },
+    {
+      "case": "push_success",
+      "passed": true,
+      "outcome": "HARD"
+    },
+    {
+      "case": "push_failure",
+      "passed": true,
+      "outcome": "FAILURE"
+    },
+    {
+      "case": "opposed_combat_bonus_die",
+      "passed": true,
+      "player_roll": 60,
+      "opponent_roll": 48
+    },
+    {
+      "case": "sanity_check",
+      "passed": true,
+      "roll": 6,
+      "loss": 1
+    },
+    {
+      "case": "major_wound",
+      "passed": true,
+      "hp": 6,
+      "unconscious": false
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "living-tabletop"
+version = "0.1.0"
+description = "Simulation-first AI TTRPG demo with a constrained Director Agent"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.116,<1",
+  "httpx>=0.28,<1",
+  "openai>=1.99,<3",
+  "pydantic>=2.11,<3",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4,<9",
+  "pytest-cov>=6.2,<8",
+]
+
+[project.scripts]
+living-tabletop = "living_tabletop.main:run"
+
+[tool.setuptools.packages.find]
+include = ["living_tabletop*"]
+
+[tool.setuptools.package-data]
+living_tabletop = ["static/*", "scenarios/*.json", "worlds/*.json"]
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-markers"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+branch = true
+source = ["living_tabletop"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

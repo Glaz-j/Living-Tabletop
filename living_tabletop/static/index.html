@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d1110">
+  <title>Living Tabletop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Shippori+Mincho+B1:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="weather" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="brand-lockup">
+      <div class="sigil" aria-hidden="true">LT</div>
+      <div>
+        <div id="case-label" class="eyebrow">LIVING TABLETOP</div>
+        <h1 id="scenario-title">选择调查模组</h1>
+      </div>
+    </div>
+    <div class="header-tools">
+      <div class="world-clock" title="虚拟世界时间">
+        <span class="clock-dot"></span>
+        <span id="world-time">21:00</span>
+      </div>
+      <div class="model-control">
+        <button id="model-toggle" class="icon-button model-toggle" type="button" aria-expanded="false">
+          <span id="model-dot" class="model-dot" data-state="unknown"></span>
+          <span id="model-summary">模型 · 检查中</span>
+        </button>
+        <section id="model-panel" class="model-panel hidden" aria-label="模型设置">
+          <div class="model-panel-heading">
+            <div>
+              <span class="eyebrow">LLM ROUTER</span>
+              <strong>模型设置</strong>
+            </div>
+            <button id="model-refresh" class="model-text-button" type="button">刷新</button>
+          </div>
+          <label for="model-mode">调用方式</label>
+          <select id="model-mode">
+            <option value="auto">自动 · 本地优先，远程兜底</option>
+            <option value="local">仅使用本地模型</option>
+            <option value="remote">仅使用远程模型</option>
+          </select>
+          <div class="model-provider-card" data-provider="local">
+            <div class="model-provider-title">
+              <span>本地 Ollama</span>
+              <small id="local-model-status">检查中</small>
+            </div>
+            <select id="local-model-select" aria-label="本地模型"></select>
+          </div>
+          <div class="model-provider-card" data-provider="remote">
+            <div class="model-provider-title">
+              <span>远程 API</span>
+              <small id="remote-model-status">检查中</small>
+            </div>
+            <select id="remote-model-select" aria-label="远程模型"></select>
+          </div>
+          <p id="model-last-used" class="model-last-used">尚无本轮调用记录</p>
+          <p id="model-message" class="model-message" role="status" aria-live="polite"></p>
+          <div class="model-actions">
+            <button id="model-probe" class="model-secondary-button" type="button">测试当前模型</button>
+            <button id="model-save" class="model-primary-button" type="button">应用</button>
+          </div>
+        </section>
+      </div>
+      <button id="developer-toggle" class="icon-button" type="button" aria-pressed="false">开发者视图</button>
+      <button id="new-game" class="icon-button quiet" type="button">新游戏</button>
+    </div>
+  </header>
+
+  <main class="game-shell">
+    <section class="story-panel" aria-live="polite">
+      <div class="scene-heading">
+        <div>
+          <span class="eyebrow">CURRENT SCENE</span>
+          <h2 id="scene-name">医院门厅</h2>
+        </div>
+        <span id="save-state" class="save-state">世界已保存</span>
+      </div>
+
+      <section id="scene-stage" class="scene-stage" data-archetype="hospital" aria-label="当前场景">
+        <div class="scene-stage-inner">
+          <div class="scene-room" aria-hidden="true">
+            <i class="room-wall wall-north"></i>
+            <i class="room-wall wall-east"></i>
+            <i class="room-wall wall-south"></i>
+            <i class="room-wall wall-west"></i>
+          </div>
+          <div id="scene-exits" class="scene-layer scene-exits"></div>
+          <div id="scene-objects" class="scene-layer scene-objects"></div>
+          <div id="scene-actors" class="scene-layer scene-actors"></div>
+          <div id="scene-player" class="scene-layer scene-player"></div>
+        </div>
+        <div class="scene-stage-footer">
+          <p id="scene-description">高窗、接待台与潮湿的黑白地砖。</p>
+          <span id="scene-mode">场景演出</span>
+        </div>
+      </section>
+
+      <article id="narrative" class="narrative">
+        雪水沿着圣玛丽医院斑驳的铜牌往下淌……
+      </article>
+      <div id="narrative-controls" class="narrative-controls hidden">
+        <span id="narrative-progress" class="narrative-progress"></span>
+        <span id="narrative-pending" class="narrative-pending hidden">后台正在补全演出，你可以继续阅读或随时打断。</span>
+        <div>
+          <button id="interrupt-performance" class="narrative-interrupt" type="button">打断演出</button>
+          <button id="skip-narrative" class="narrative-skip" type="button">跳过描写</button>
+          <button id="continue-narrative" class="narrative-continue" type="button">继续</button>
+        </div>
+      </div>
+
+      <div id="check-result" class="check-result hidden"></div>
+      <div id="rule-choice" class="rule-choice hidden" aria-live="polite"></div>
+      <div id="ending-banner" class="ending-banner hidden"></div>
+
+      <div id="decision-divider" class="decision-divider">
+        <span>你准备怎么做？</span>
+      </div>
+      <section id="dialogue-block" class="dialogue-block hidden" aria-label="对话选项">
+        <div class="decision-subtitle">你可以这样开口</div>
+        <div id="dialogue-options" class="dialogue-options"></div>
+      </section>
+      <div id="suggested-actions" class="suggested-actions"></div>
+
+      <form id="free-action-form" class="free-action">
+        <label id="free-action-label" for="free-action-input">或者，做任何你想做的事</label>
+        <p id="free-action-note" class="free-action-note">你可以离开现场或偏离主线；KP 会判断结果，世界仍会继续运转。</p>
+        <div class="input-row">
+          <textarea id="free-action-input" rows="2" maxlength="1000" placeholder="例如：我告诉安娜警察正在赶来，观察她的反应……"></textarea>
+          <button id="submit-action" type="submit">行动</button>
+        </div>
+        <p id="clarification" class="clarification hidden" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <aside class="journal-panel">
+      <section class="journal-section investigator-card">
+        <div class="eyebrow">INVESTIGATOR</div>
+        <div class="player-name-row">
+          <h3 id="player-name">调查员</h3>
+          <span id="session-status" class="status-chip">调查中</span>
+        </div>
+        <div class="meters">
+          <div class="meter-group">
+            <div class="meter-label"><span>生命</span><span id="hp-text">10 / 10</span></div>
+            <div class="meter"><i id="hp-meter" class="hp"></i></div>
+          </div>
+          <div class="meter-group">
+            <div class="meter-label"><span>理智 SAN</span><span id="sanity-text">60 / 99</span></div>
+            <div class="meter"><i id="sanity-meter" class="sanity"></i></div>
+          </div>
+          <div class="meter-group">
+            <div class="meter-label"><span>幸运 LUCK</span><span id="luck-text">50 / 99</span></div>
+            <div class="meter"><i id="luck-meter" class="luck"></i></div>
+          </div>
+        </div>
+        <div id="investigator-conditions" class="condition-list"></div>
+        <details class="investigator-sheet">
+          <summary>调查员数据</summary>
+          <div id="characteristics" class="sheet-grid"></div>
+          <div id="skills" class="skill-grid"></div>
+        </details>
+      </section>
+
+      <section class="journal-section">
+        <div class="section-title"><span>现场人物</span><span class="section-mark">01</span></div>
+        <div id="present-npcs" class="tag-list empty-copy">此处没有其他人</div>
+      </section>
+
+      <section class="journal-section">
+        <div class="section-title"><span>随身物品</span><span class="section-mark">02</span></div>
+        <div id="inventory" class="tag-list"></div>
+      </section>
+
+      <section class="journal-section clues-section">
+        <div class="section-title"><span>调查线索</span><span id="clue-count" class="section-mark">0</span></div>
+        <div id="clue-list" class="clue-list">
+          <p class="empty-copy">可靠的线索会记录在这里。</p>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <aside id="developer-console" class="developer-console" aria-hidden="true">
+    <div class="developer-header">
+      <div>
+        <span class="eyebrow">OBSERVABILITY</span>
+        <h2>Director Console</h2>
+      </div>
+      <button id="developer-close" class="icon-button" type="button">关闭</button>
+    </div>
+    <div class="developer-grid">
+      <section>
+        <h3>Experience State</h3>
+        <div id="experience-metrics" class="metrics-grid"></div>
+      </section>
+      <section>
+        <h3>Last Decision</h3>
+        <div id="director-decision" class="console-box muted">尚未触发干预。</div>
+      </section>
+      <section>
+        <h3>Threat Clocks</h3>
+        <div id="threat-clocks" class="console-list"></div>
+      </section>
+      <section>
+        <h3>Event Queue</h3>
+        <div id="event-queue" class="console-list scroll"></div>
+      </section>
+      <section>
+        <h3>NPC Locations</h3>
+        <div id="npc-locations" class="console-list"></div>
+      </section>
+      <section class="developer-wide">
+        <h3>World Graph · Developer Only</h3>
+        <div id="world-map-summary" class="world-map-summary"></div>
+      </section>
+      <section>
+        <h3>Recent Event Log</h3>
+        <div id="event-log" class="console-list scroll"></div>
+      </section>
+    </div>
+  </aside>
+
+  <div id="start-modal" class="modal-backdrop">
+    <section class="start-card">
+      <span class="eyebrow">A SIMULATION-FIRST MYSTERY</span>
+      <h2 id="start-headline">选择今晚的案件。</h2>
+      <p id="start-description">两个模组使用同一套世界内核、时间系统与 Director。</p>
+      <div id="scenario-picker" class="scenario-picker" aria-label="选择模组"></div>
+      <p id="scenario-source" class="scenario-source hidden"></p>
+      <label for="start-name">调查员姓名</label>
+      <input id="start-name" maxlength="40" value="林默" autocomplete="off">
+      <button id="start-game" type="button">开始调查</button>
+      <small id="session-note" role="status" aria-live="polite">CoC 7版基础规则 · 单人</small>
+    </section>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

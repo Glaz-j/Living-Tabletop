@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a1110">
+  <title>Visual World Kernel V1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/world-kernel.css">
+</head>
+<body>
+  <header class="kernel-header">
+    <div class="brand">
+      <span class="brand-mark">WK</span>
+      <div>
+        <div class="eyebrow">LIVING TABLETOP · RUNTIME V1</div>
+        <h1 id="world-title">视觉世界内核</h1>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div><span>WORLD TIME</span><strong id="world-time">--:--</strong></div>
+      <div><span>VERSION</span><strong id="world-version">0</strong></div>
+      <button id="replay-check" type="button">验证重放</button>
+      <button id="dev-toggle" type="button">开发者视图</button>
+      <button id="new-world" type="button">重建世界</button>
+    </div>
+  </header>
+
+  <main class="kernel-grid">
+    <section class="map-card panel">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">PROJECTED MAP</span>
+          <h2>观察者认知地图</h2>
+        </div>
+        <span id="projection-badge" class="badge">PLAYER PROJECTION</span>
+      </div>
+      <svg id="world-map" viewBox="0 0 100 100" role="img" aria-label="世界地图">
+        <g id="map-edges"></g>
+        <g id="map-nodes"></g>
+      </svg>
+      <p class="map-note">实线表示已发现的通路；暗色地点只代表你知道它存在，并不代表你看见了里面。</p>
+    </section>
+
+    <section class="action-card panel">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">CURRENT OBSERVER</span>
+          <h2 id="observer-name">调查员</h2>
+        </div>
+        <span id="location-name" class="location-chip">未知位置</span>
+      </div>
+
+      <div id="request-status" class="request-status" aria-live="polite">世界已加载。</div>
+
+      <section>
+        <h3>现场实体</h3>
+        <div id="visible-entities" class="entity-list"></div>
+      </section>
+
+      <section>
+        <h3>可执行行动</h3>
+        <div id="affordances" class="affordance-list"></div>
+      </section>
+
+      <section>
+        <h3>随身物品</h3>
+        <div id="inventory" class="tag-list"></div>
+      </section>
+    </section>
+
+    <aside class="journal-card panel">
+      <section>
+        <div class="panel-heading compact">
+          <div>
+            <span class="eyebrow">CANONICAL EVENTS</span>
+            <h2>事件时间线</h2>
+          </div>
+        </div>
+        <ol id="event-log" class="event-log"></ol>
+      </section>
+
+      <section class="knowledge-section">
+        <h3>角色知识</h3>
+        <div id="knowledge" class="knowledge-list"></div>
+      </section>
+    </aside>
+  </main>
+
+  <dialog id="dev-dialog">
+    <div class="dialog-heading">
+      <div>
+        <span class="eyebrow">UNFILTERED DEV PROJECTION</span>
+        <h2>运行时真相</h2>
+      </div>
+      <button id="dev-close" type="button">关闭</button>
+    </div>
+    <pre id="dev-json"></pre>
+  </dialog>
+
+  <script src="/static/world-kernel.js"></script>
+</body>
+</html>

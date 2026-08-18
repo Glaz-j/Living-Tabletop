@@ -1,0 +1,417 @@
+{
+  "id": "st_mary_hospital_v0",
+  "title": "圣玛丽医院",
+  "subtitle": "1927 年冬夜，一座即将关闭的私人医院仍有病房亮着灯。",
+  "start_time": "1927-12-17T21:00:00",
+  "opening_narrative": "雪水沿着圣玛丽医院斑驳的铜牌往下淌。你受失踪记者塞缪尔·里德的编辑委托而来——他最后一封电报只有一句：‘午夜前，听钟声下面。’门厅里，夜班护士安娜正把一本访客簿匆匆合上。远处病房传来一声压抑的咳嗽，而医院深处的灯光微微闪烁。",
+  "start_location": "loc_lobby",
+  "minimum_evidence": 5,
+  "presentation": {
+    "case_label": "LIVING TABLETOP · CASE 001",
+    "headline": "今晚，世界不会等你。",
+    "description": "1927 年冬夜。调查一名记者的失踪，追踪医院与废弃教堂之间的秘密。你的每个行动都会消耗时间；在你看不到的地方，其他人也在行动。",
+    "start_button": "推开医院大门",
+    "session_note": "CoC 7版基础规则 · 单人 · 约 30–60 分钟",
+    "free_action_placeholder": "例如：我告诉安娜警察正在赶来，观察她的反应……"
+  },
+  "initial_flags": {
+    "escaped": false,
+    "ritual_disrupted": false,
+    "samuel_rescued": false,
+    "power_outage_seen": false,
+    "director_clue_opportunity": false,
+    "wren_defeated": false
+  },
+  "movement_requirements": {
+    "loc_office->loc_archives": [{"subject":"fact:f_archive_locked","predicate":"value","operator":"eq","value":false}],
+    "loc_lobby->loc_basement": [{"subject":"fact:f_basement_locked","predicate":"value","operator":"eq","value":false}]
+  },
+  "director_config": {
+    "primary_threat_id": "threat_ritual",
+    "progress_flags": ["ritual_disrupted"],
+    "hint_opportunities": [
+      {
+        "id": "hint_anna_records",
+        "label": "让安娜想起病历副本",
+        "requirements": [
+          {"subject":"flag:director_clue_opportunity","predicate":"value","operator":"eq","value":false},
+          {"subject":"player","predicate":"knowledge","operator":"not_known","value":"f_records_pattern"}
+        ],
+        "effects": [{"op":"mark_flag","params":{"key":"director_clue_opportunity","value":true,"visible":true}}],
+        "world_justification": "安娜曾抄写死亡日期，副本是场景预设的冗余信息源。",
+        "affected_entities": ["npc_anna", "f_records_pattern"]
+      }
+    ]
+  },
+  "entities": [
+    {"id":"player","type":"PLAYER","name":"调查员","location":"loc_lobby","attributes":{},"tags":["human"],"active":true},
+    {"id":"loc_lobby","type":"LOCATION","name":"医院门厅","attributes":{"description":"高窗、接待台与潮湿的黑白地砖。"},"tags":["hospital"],"active":true},
+    {"id":"loc_ward","type":"LOCATION","name":"旧病房区","attributes":{"description":"六张铁床只住着一位清醒的病人。","entry_beats":["门在身后缓慢合拢，走廊里的风声被厚墙截断，只剩铁床偶尔发出的轻响。","床头柜上的搪瓷杯已经凉透，空气里混着消毒水、旧棉布和煤烟的味道。"]},"tags":["hospital"],"active":true},
+    {"id":"loc_office","type":"LOCATION","name":"院长办公室","attributes":{"description":"胡桃木书桌、壁炉和一幅过分崭新的圣母像。","entry_beats":["壁炉里的火很小，却让房间比医院其他地方暖得异常；桌上的每件东西都被摆得过分整齐。","门外的脚步声传到这里便变得模糊，仿佛这间办公室刻意与整座医院隔开。"]},"tags":["hospital"],"active":true},
+    {"id":"loc_archives","type":"LOCATION","name":"档案室","attributes":{"description":"成排病历柜挤在没有窗的狭长房间里。","entry_beats":["拉绳灯泡在头顶轻轻摇晃，柜门投下的影子像一排没有尽头的窄门。","纸张受潮后的气味沉在房间底部，每一次呼吸都带起细小的灰尘。"]},"tags":["hospital"],"active":true},
+    {"id":"loc_basement","type":"LOCATION","name":"医院地下室","attributes":{"description":"锅炉管道穿过潮湿砖墙，地面留着拖曳痕迹。","entry_beats":["温热管道在头顶发出断续的敲击，水滴落在砖地上，声音沿黑暗传得很远。","这里的空气比楼上沉重，煤灰覆在墙角，任何新留下的痕迹都会格外醒目。"]},"tags":["hospital","danger"],"active":true},
+    {"id":"loc_house","type":"LOCATION","name":"院长住宅","attributes":{"description":"与医院相连的小楼，窗帘紧闭，书房仍亮着灯。"},"tags":["residence"],"active":true},
+    {"id":"loc_chapel","type":"LOCATION","name":"圣阿格尼丝教堂","attributes":{"description":"教堂废弃多年，今晚祭坛上却点着新蜡烛。","entry_beats":["风从破损彩窗灌进来，烛焰却没有朝同一个方向偏斜。","长椅积着多年灰尘，靠近祭坛的地面却留着刚被清扫过的浅色痕迹。"]},"tags":["chapel","danger"],"active":true},
+    {"id":"loc_crypt","type":"LOCATION","name":"教堂地窖","attributes":{"description":"环形石室中央刻着一道未完成的白色纹章。","entry_beats":["石阶尽头没有风，烛火照出的影子紧贴墙面，随着你的移动缓慢转动。","潮湿石缝里凝着冷水，中央空地却干燥得像刚被火烘烤过。"]},"tags":["chapel","danger","ritual"],"active":true},
+    {"id":"loc_road","type":"LOCATION","name":"积雪公路","attributes":{"description":"通往镇子的公路被风雪吞没，只剩稀疏路灯。"},"tags":["outside","exit"],"active":true},
+    {"id":"npc_anna","type":"NPC","name":"安娜·维尔","location":"loc_lobby","attributes":{"role":"夜班护士","mood":"guarded"},"tags":["human","potential_ally"],"active":true},
+    {"id":"npc_wren","type":"NPC","name":"伊莱亚斯·雷恩医生","location":"loc_house","attributes":{"role":"医院院长","mood":"controlled","pow":65,"psychology":55,"fighting":45},"tags":["human","antagonist"],"active":true},
+    {"id":"npc_wilson","type":"NPC","name":"托马斯·威尔逊","location":"loc_basement","attributes":{"role":"勤杂工","mood":"alert"},"tags":["human","hostile"],"active":true},
+    {"id":"npc_agnes","type":"NPC","name":"艾格尼丝·贝尔","location":"loc_ward","attributes":{"role":"病人","mood":"frightened"},"tags":["human","witness"],"active":true},
+    {"id":"npc_doyle","type":"NPC","name":"多伊尔神父","location":"loc_chapel","attributes":{"role":"停职神父","mood":"ashamed"},"tags":["human","witness"],"active":true},
+    {"id":"npc_samuel","type":"NPC","name":"塞缪尔·里德","location":"loc_basement","attributes":{"role":"失踪记者","mood":"injured"},"tags":["human","victim"],"active":false},
+    {"id":"faction_choir","type":"FACTION","name":"白色圣咏会","location":null,"attributes":{"goal":"完成静默仪式","resources":3,"alert":30},"tags":["cult"],"active":true},
+    {"id":"item_archive_key","type":"ITEM","name":"黄铜万能钥匙","location":"loc_office","attributes":{},"tags":["key"],"active":true},
+    {"id":"item_records","type":"ITEM","name":"异常治疗病历","location":"loc_archives","attributes":{},"tags":["evidence"],"active":true},
+    {"id":"item_reed_notebook","type":"ITEM","name":"里德的防水笔记本","location":"loc_basement","attributes":{},"tags":["evidence"],"active":true},
+    {"id":"item_lantern","type":"ITEM","name":"煤油提灯","location":"loc_lobby","attributes":{},"tags":["light"],"active":true}
+  ],
+  "facts": [
+    {"id":"f_arrival_reason","subject":"player","predicate":"investigates","value":"塞缪尔·里德失踪","visibility":"PLAYER","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_wren_leader","subject":"npc_wren","predicate":"leads","value":"faction_choir","visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_ritual_time","subject":"faction_choir","predicate":"ritual_completion_time","value":"1927-12-17T23:00:00","visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_missing_note","subject":"npc_samuel","predicate":"last_note","value":"钟声下面有一条从医院通往教堂的路","visibility":"HIDDEN","created_at":"1927-12-17T20:40:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_injection_marks","subject":"npc_agnes","predicate":"has_marks","value":"与镇静剂和反复抽血相符的针孔","visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_anna_saw_transfer","subject":"npc_anna","predicate":"witnessed","value":"威尔逊把三名病人从地下通道送往教堂","visibility":"HIDDEN","created_at":"1927-12-16T23:10:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_chapel_ledger","subject":"npc_wren","predicate":"funded","value":"以治疗费名义向废弃教堂持续转账","visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_cult_photo","subject":"npc_wren","predicate":"photographed_with","value":"威尔逊和白袍成员站在教堂地窖入口","visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_records_pattern","subject":"loc_archives","predicate":"documents","value":"六名无亲属病人的死亡日期都与教堂钟声记录一致","visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_sedative_log","subject":"loc_ward","predicate":"medicine_log","value":"每次所谓圣咏治疗前都使用过量镇静剂","visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_tunnel_blood","subject":"loc_basement","predicate":"trail","value":"新鲜血迹与泥脚印通向教堂方向的封闭隧道","visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_samuel_testimony","subject":"npc_samuel","predicate":"knows","value":"雷恩将在十一点以病人的血完成地下仪式","visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_ritual_symbols","subject":"loc_chapel","predicate":"contains","value":"与病历页边符号完全一致的仪式纹章","visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_doyle_confession","subject":"npc_doyle","predicate":"confesses","value":"他曾替雷恩打开地窖，后来发现被送来的是活人","visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_wren_letter","subject":"npc_wren","predicate":"wrote","value":"仪式将在十一点完成，威尔逊负责清理医院记录","visibility":"HIDDEN","created_at":"1927-12-17T20:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_archive_locked","subject":"loc_archives","predicate":"locked","value":true,"visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":false,"canon":"soft_canon"},
+    {"id":"f_basement_locked","subject":"loc_basement","predicate":"locked","value":true,"visibility":"PLAYER","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":false,"canon":"soft_canon"},
+    {"id":"f_records_intact","subject":"item_records","predicate":"intact","value":true,"visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":false,"canon":"soft_canon"},
+    {"id":"f_power_on","subject":"loc_lobby","predicate":"power_on","value":true,"visibility":"PUBLIC","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":false,"canon":"soft_canon"},
+    {"id":"f_wilson_alerted","subject":"npc_wilson","predicate":"alerted","value":false,"visibility":"HIDDEN","created_at":"1927-12-17T21:00:00","source":"scenario","immutable":false,"canon":"soft_canon"}
+  ],
+  "relationships": [
+    {"subject":"npc_anna","relation":"trusts","object":"player","value":0.1},
+    {"subject":"npc_wilson","relation":"fears","object":"npc_wren","value":0.8},
+    {"subject":"npc_doyle","relation":"opposes","object":"faction_choir","value":0.7}
+  ],
+  "player": {
+    "entity_id":"player","name":"调查员","hp":11,"max_hp":11,"stress":0,"max_stress":10,
+    "characteristics":{"str":50,"con":60,"siz":50,"dex":55,"app":55,"int":70,"pow":65,"edu":70},
+    "sanity":65,"max_sanity":99,"starting_sanity":65,"luck":50,"max_luck":99,"magic_points":13,"move_rate":8,"damage_bonus":"0","build":0,
+    "skills":{"observation":70,"medicine":55,"persuasion":60,"deception":50,"athletics":55,"stealth":50,"occult":40,"fighting":45,"dodge":40,"first_aid":50,"psychology":50},
+    "inventory":[]
+  },
+  "initial_player_known_fact_ids": ["f_arrival_reason","f_basement_locked"],
+  "npc_knowledge": [
+    {"knower_id":"npc_anna","fact_id":"f_anna_saw_transfer","belief_value":null,"confidence":0.95,"source":"eyewitness","learned_at":"1927-12-16T23:10:00","concealed":true},
+    {"knower_id":"npc_anna","fact_id":"f_injection_marks","belief_value":null,"confidence":1.0,"source":"professional","learned_at":"1927-12-17T18:00:00","concealed":false},
+    {"knower_id":"npc_wren","fact_id":"f_wren_leader","belief_value":null,"confidence":1.0,"source":"self","learned_at":"1927-01-01T00:00:00","concealed":true},
+    {"knower_id":"npc_wren","fact_id":"f_ritual_time","belief_value":null,"confidence":1.0,"source":"planner","learned_at":"1927-12-01T00:00:00","concealed":true},
+    {"knower_id":"npc_wilson","fact_id":"f_wren_leader","belief_value":null,"confidence":1.0,"source":"member","learned_at":"1927-04-01T00:00:00","concealed":true},
+    {"knower_id":"npc_wilson","fact_id":"f_ritual_time","belief_value":null,"confidence":1.0,"source":"orders","learned_at":"1927-12-17T18:00:00","concealed":true},
+    {"knower_id":"npc_doyle","fact_id":"f_doyle_confession","belief_value":null,"confidence":1.0,"source":"self","learned_at":"1927-11-01T00:00:00","concealed":true}
+  ],
+  "events": [
+    {
+      "id":"scheduled_power_failure","time":"1927-12-17T21:18:00","type":"hospital_power_failed","actor":"faction_choir","target":"loc_lobby",
+      "payload":{"always_visible":true,"text":"整座医院骤然陷入黑暗。几秒后，应急煤油灯才从墙边泛起微光。","effects":[{"op":"set_fact","params":{"fact_id":"f_power_on","value":false}},{"op":"mark_flag","params":{"key":"power_outage_seen","value":true,"visible":true}}]},
+      "conditions":[{"subject":"fact:f_power_on","predicate":"value","operator":"eq","value":true}],"priority":10,"cancelable":false,"interrupt_action":true,"interrupt_locations":[],"canceled":false
+    },
+    {
+      "id":"scheduled_ritual_25","time":"1927-12-17T21:30:00","type":"ritual_preparations_advance","actor":"faction_choir","target":"threat_ritual",
+      "payload":{"text":"风里传来一次低沉钟响。","visible_locations":["loc_road","loc_chapel","loc_house"],"effects":[{"op":"advance_threat","params":{"threat_id":"threat_ritual","amount":15}}]},
+      "conditions":[],"priority":50,"cancelable":true,"interrupt_action":false,"interrupt_locations":[],"canceled":false
+    },
+    {
+      "id":"scheduled_wilson_burns_records","time":"1927-12-17T21:42:00","type":"wilson_burned_records","actor":"npc_wilson","target":"loc_archives",
+      "payload":{"text":"档案室里腾起刺鼻烟味，威尔逊正在销毁病历。","visible_locations":["loc_archives","loc_office"],"effects":[{"op":"set_fact","params":{"fact_id":"f_records_intact","value":false}},{"op":"move_entity","params":{"entity_id":"npc_wilson","destination":"loc_chapel"}}]},
+      "conditions":[{"subject":"fact:f_records_intact","predicate":"value","operator":"eq","value":true},{"subject":"action:archives_take_records","predicate":"completed","operator":"eq","value":false}],"priority":20,"cancelable":true,"interrupt_action":true,"interrupt_locations":["loc_archives"],"canceled":false
+    },
+    {
+      "id":"scheduled_ritual_50","time":"1927-12-17T22:05:00","type":"ritual_congregation_gathers","actor":"npc_wren","target":"loc_chapel",
+      "payload":{"text":"教堂方向响起第二次钟声。","visible_locations":["loc_road","loc_chapel","loc_house","loc_basement"],"effects":[{"op":"advance_threat","params":{"threat_id":"threat_ritual","amount":20}},{"op":"move_entity","params":{"entity_id":"npc_wren","destination":"loc_chapel"}}]},
+      "conditions":[],"priority":50,"cancelable":true,"interrupt_action":false,"interrupt_locations":[],"canceled":false
+    },
+    {
+      "id":"scheduled_ritual_75","time":"1927-12-17T22:35:00","type":"ritual_begins","actor":"faction_choir","target":"loc_crypt",
+      "payload":{"text":"第三次钟声震得窗玻璃发颤，地下传来整齐而没有呼吸间隔的吟唱。","always_visible":true,"effects":[{"op":"advance_threat","params":{"threat_id":"threat_ritual","amount":25}},{"op":"move_entity","params":{"entity_id":"npc_wren","destination":"loc_crypt"}},{"op":"move_entity","params":{"entity_id":"npc_wilson","destination":"loc_crypt"}}]},
+      "conditions":[],"priority":50,"cancelable":true,"interrupt_action":true,"interrupt_locations":[],"canceled":false
+    },
+    {
+      "id":"scheduled_ritual_complete","time":"1927-12-17T23:00:00","type":"ritual_completion","actor":"faction_choir","target":"loc_crypt",
+      "payload":{"text":"最后一声钟鸣落下，医院所有窗户同时变成乳白色。","always_visible":true,"effects":[{"op":"advance_threat","params":{"threat_id":"threat_ritual","amount":100}}]},
+      "conditions":[{"subject":"flag:ritual_disrupted","predicate":"value","operator":"eq","value":false}],"priority":1,"cancelable":true,"interrupt_action":true,"interrupt_locations":[],"canceled":false
+    }
+  ],
+  "threats": [
+    {
+      "id":"threat_ritual","name":"静默仪式","progress":15,"crossed":[],
+      "thresholds":[
+        {"at":25,"label":"准备完成","effects":[{"op":"mark_flag","params":{"key":"ritual_stage","value":1}}],"narrative":""},
+        {"at":50,"label":"教众集结","effects":[{"op":"set_fact","params":{"fact_id":"f_wilson_alerted","value":true}}],"narrative":"空气里开始浮现若有若无的圣咏。"},
+        {"at":75,"label":"仪式开始","effects":[{"op":"sanity_check","params":{"success_loss":"0","failure_loss":"1d3","reason":"听见不可能从墙体内部传来的圣咏"}}],"narrative":"你听见声音从墙体内部传来，理智本能地抗拒它。"},
+        {"at":100,"label":"仪式完成","effects":[{"op":"set_status","params":{"status":"LOST","ending_id":"ritual_complete"}}],"narrative":"静默降临。最后一点人声被白色光芒吞没。"}
+      ]
+    }
+  ],
+  "clues": [
+    {"id":"clue_missing_note","fact_id":"f_missing_note","title":"里德留下的暗语","description":"钟声下面有一条从医院通往教堂的路。","critical":false,"sources":["lobby_guestbook","director_surface_note"]},
+    {"id":"clue_injection_marks","fact_id":"f_injection_marks","title":"异常针孔","description":"病人遭到反复抽血和过量镇静。","critical":false,"sources":["ward_examine_agnes","anna_medical_hint"]},
+    {"id":"clue_anna_transfer","fact_id":"f_anna_saw_transfer","title":"夜间转运","description":"威尔逊曾把病人从地下通道送往教堂。","critical":true,"sources":["lobby_talk_anna","ward_talk_anna"]},
+    {"id":"clue_chapel_ledger","fact_id":"f_chapel_ledger","title":"教堂账目","description":"雷恩长期将治疗费转入废弃教堂基金。","critical":false,"sources":["office_search_desk"]},
+    {"id":"clue_cult_photo","fact_id":"f_cult_photo","title":"地窖合影","description":"照片把雷恩、威尔逊与教堂地窖联系在一起。","critical":true,"sources":["office_inspect_painting"]},
+    {"id":"clue_records_pattern","fact_id":"f_records_pattern","title":"死亡记录规律","description":"无亲属病人的死亡日期与教堂钟声一致。","critical":true,"sources":["archives_take_records","archives_search_ashes","director_records_witness"]},
+    {"id":"clue_sedative_log","fact_id":"f_sedative_log","title":"镇静剂记录","description":"所谓治疗前均使用过量镇静剂。","critical":false,"sources":["ward_search_medicine"]},
+    {"id":"clue_tunnel_blood","fact_id":"f_tunnel_blood","title":"地下血迹","description":"血迹和泥脚印通向教堂。","critical":false,"sources":["basement_follow_trail"]},
+    {"id":"clue_samuel_testimony","fact_id":"f_samuel_testimony","title":"里德的证词","description":"雷恩计划在十一点完成仪式。","critical":true,"sources":["basement_rescue_samuel"]},
+    {"id":"clue_ritual_symbols","fact_id":"f_ritual_symbols","title":"仪式纹章","description":"教堂纹章与医院病历上的符号一致。","critical":false,"sources":["chapel_inspect_altar"]},
+    {"id":"clue_doyle_confession","fact_id":"f_doyle_confession","title":"神父的忏悔","description":"多伊尔承认自己曾为雷恩打开地窖。","critical":true,"sources":["chapel_talk_doyle"]},
+    {"id":"clue_wren_letter","fact_id":"f_wren_letter","title":"雷恩的指令信","description":"信中明确写出仪式时间和销毁病历的命令。","critical":true,"sources":["house_search_study"]}
+  ],
+  "actions": [
+    {
+      "id":"lobby_guestbook","label":"检查访客簿","type":"SEARCH","location":"loc_lobby","target":"loc_lobby","duration_minutes":8,"skill":"observation","difficulty":"regular","aliases":["看访客簿","搜接待台","检查前台","找里德记录"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_missing_note"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"访客簿夹层里藏着里德撕下的电报底稿：‘钟声下面有一条路。’纸边沾着地下室常见的红褐色锅炉锈。","failure_text":"访客簿上的姓名被雨水和墨渍糊成一片，你暂时没找到可靠信息。",
+      "success_beats":["访客簿的封皮仍带着安娜掌心留下的温度。你没有从姓名栏开始，而是沿着装订线一页页检查；靠近封底时，纸脊发出一声不属于书页的轻响。","一张被撕成窄条的电报底稿藏在夹层里。铅笔字写得仓促，只有一句仍然完整：‘午夜前，听钟声下面。那里有一条路。’","纸边沾着红褐色粉末，带有潮湿金属的气味。那不是干涸的血，而是老式锅炉与地下管道上常见的铁锈；里德写下这句话时，很可能刚从医院地下回来。"],
+      "failure_beats":["雨水与反复擦拭把访客簿上的墨迹拖成灰蓝色阴影。你逐页对照日期，却只能辨认出几组互相矛盾的姓名缩写。","装订线附近似乎被人动过，但潮湿纸张粘得太紧。继续强拆只会毁掉可能藏在里面的东西，你暂时没有得到可靠线索。"],"interrupted_text":"灯光的突变迫使你合上访客簿，搜索被打断。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"lobby_talk_anna","label":"试着取得安娜的信任","type":"TALK","location":"loc_lobby","target":"npc_anna","duration_minutes":6,"skill":"persuasion","difficulty":"regular","aliases":["问安娜","和护士说话","询问转运","说服安娜"],"dialogue_text":"“安娜，我不是来追究你的责任。我只想知道：昨晚你究竟看见了什么？”",
+      "requirements":[{"subject":"entity:npc_anna","predicate":"location","operator":"eq","value":"loc_lobby"}],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_anna_saw_transfer"}},{"op":"add_memory","params":{"npc_id":"npc_anna","text":"调查员认真听取了我的警告。","importance":0.7}}],
+      "failure_effects":[{"op":"add_memory","params":{"npc_id":"npc_anna","text":"调查员逼问我关于地下室的事。","importance":0.5}}],"always_effects":[],
+      "success_text":"安娜确认走廊无人后压低声音：她亲眼见过威尔逊把被镇静的病人从地下室运往教堂。她害怕雷恩，所以一直沉默。","failure_text":"安娜攥紧钥匙圈，只说病人已经转院。她的目光却不由自主地飘向地下室门。",
+      "success_beats":["安娜没有立刻回答。她把钥匙圈攥进掌心，先确认通往院长办公室的走廊里没有脚步，才把声音压到几乎只剩气音。","“昨晚快两点的时候，我看见威尔逊推着一辆担架从地下室出来。担架上的人被打了镇静剂，可他的手还在动——他根本没有失去意识。”","“他们没有往病房走。威尔逊把人送进了后面的运煤通道，那条路通向废弃教堂。雷恩院长就在门边看着，好像这已经不是第一次。”","安娜终于抬眼看你。 “我一直没说，是因为雷恩知道我看见了。要是你真想找里德，就别相信这里任何一张转院证明。”"],
+      "failure_beats":["安娜的指节在钥匙圈上慢慢泛白。她避开你的视线，把职业化的平静重新罩回脸上。","“病人已经按照手续转院。我只是夜班护士，其他事情无可奉告。”","话说完后，她的目光却短暂落在地下室厚木门的锁孔上；等她意识到你看见这一点，立刻转身整理起空无一物的接待台。"],"once":true,"suggest":true,"risk":"uncertain","category":"social"
+    },
+    {
+      "id":"lobby_take_lantern","label":"拿起接待台旁的提灯","type":"TAKE","location":"loc_lobby","target":"item_lantern","duration_minutes":1,"skill":null,"difficulty":"regular","aliases":["拿提灯","取灯","带上灯"],
+      "requirements":[],"forbidden":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_lantern"}],"success_effects":[{"op":"add_inventory","params":{"item_id":"item_lantern"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"你调高提灯的灯芯。至少在电力不可靠时，它能给你一圈稳定的光。","once":true,"suggest":false,"risk":"safe","category":"other"
+    },
+    {
+      "id":"ward_examine_agnes","label":"检查艾格尼丝手臂上的针痕","type":"EXAMINE","location":"loc_ward","target":"npc_agnes","duration_minutes":7,"skill":"medicine","difficulty":"regular","aliases":["检查病人","看针孔","给艾格尼丝检查","检查手臂"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_injection_marks"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"针孔的分布不像普通注射：她被反复抽血，并接受了远超常规剂量的镇静剂。","failure_text":"艾格尼丝因恐惧不断发抖，你无法可靠判断旧伤与新针孔。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"ward_search_medicine","label":"核对药柜和用药记录","type":"SEARCH","location":"loc_ward","target":"loc_ward","duration_minutes":9,"skill":"medicine","difficulty":"regular","aliases":["搜药柜","查用药","看药品记录","检查药瓶"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_sedative_log"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"药柜记录显示，每次‘圣咏治疗’前都领取了足以让数人昏迷的镇静剂。签字人是雷恩。","failure_text":"药瓶标签被重新粘贴过，你无法在昏暗光线下确认剂量。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"ward_calm_agnes","label":"安抚艾格尼丝并询问钟声","type":"TALK","location":"loc_ward","target":"npc_agnes","duration_minutes":5,"skill":"persuasion","difficulty":"regular","aliases":["问艾格尼丝","安抚病人","问钟声","和病人说话"],"dialogue_text":"“艾格尼丝，看着我。你现在很安全——把你听见钟声后的事情慢慢告诉我。”","requirements":[],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_ritual_symbols"}}],"failure_effects":[],"always_effects":[],
+      "sanity_check":{"success_loss":"0","failure_loss":"1","reason":"听见艾格尼丝用陌生声音哼唱圣咏","on":"failure","once":true},
+      "success_text":"艾格尼丝在床单上画出反复梦见的白色纹章，说每次钟声后就会少一名病人。这个图案显然来自某个真实场所。","failure_text":"她突然用不属于自己的声音哼起圣咏。你没有得到答案，寒意却顺着脊背爬上来。",
+      "success_beats":["艾格尼丝盯着你的眼睛看了很久，急促的呼吸才一点点慢下来。她从枕套里摸出一截磨秃的铅笔，在床单上画出彼此咬合的白色弧线。","“钟一响，走廊里的轮子就会滚过去。第二天，总有一张床是空的。护士说他们转院了，可转院的人不会在夜里哭着求神宽恕。”","她把纹章中央反复涂黑，铅芯终于折断。 “我在梦里见过这个地方。三支白蜡烛围着一扇门，门后面有人叫我的名字。”","“这不是梦，对不对？”她按住你的手腕，声音轻得发抖，“它就在教堂里。今晚还会再响一次。”"],
+      "failure_beats":["艾格尼丝的目光越过你，死死盯住空荡的门口。她的嘴唇先是无声翕动，随后吐出一段陌生而低沉的圣咏。","“白门张开，七盏灯熄灭——没有名字的人，将在钟声下面醒来。”","那声音与她虚弱的身体毫不相称。你再叫她的名字时，她猛地缩回床角，只剩下一句反复的低语： “别让它听见我。”"],"once":true,"suggest":true,"risk":"uncertain","category":"social"
+    },
+    {
+      "id":"office_search_desk","label":"搜查雷恩的书桌","type":"SEARCH","location":"loc_office","target":"loc_office","duration_minutes":10,"skill":"observation","difficulty":"regular","aliases":["搜书桌","查账本","翻院长桌子","找钥匙"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_chapel_ledger"}},{"op":"add_inventory","params":{"item_id":"item_archive_key"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"抽屉夹层藏着教堂基金账目：治疗费正持续流入一座废弃教堂。账本下面还有一把标着‘档案/地下室’的万能钥匙。","failure_text":"书桌被整理得近乎刻意，锁住的夹层没有留下明显开启方式。",
+      "success_beats":["雷恩的书桌整洁得不像有人仍在使用：墨水瓶擦得没有指纹，信笺边缘彼此齐平，只有最下层抽屉在拉动时比外观允许的深度短了一截。","你沿木板内侧找到一枚被黑漆掩住的弹片。夹层弹开后，一本教堂基金账目露了出来；所谓‘圣咏治疗费’正按月流向一座早已废弃的教堂。","账本下面压着一把磨亮的黄铜钥匙，纸签上用雷恩的笔迹写着‘档案／地下室’。钥匙齿上还留着新鲜的油，说明它直到今晚仍在频繁使用。"],
+      "failure_beats":["桌面没有一张多余纸片，抽屉内部也被擦拭得过分干净。最下层木板的回声略显空洞，却找不到可以无损开启的缝隙。","你确认这里存在一个锁住的夹层，但贸然撬动会立刻留下痕迹。雷恩把重要东西藏在里面，也把开启方式带在了身上。"],"once":true,"suggest":true,"risk":"uncertain","category":"investigate"
+    },
+    {
+      "id":"office_inspect_painting","label":"检查墙上异常崭新的圣母像","type":"EXAMINE","location":"loc_office","target":"loc_office","duration_minutes":6,"skill":"observation","difficulty":"hard","aliases":["看画","检查圣母像","挪开画像","搜墙"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_cult_photo"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"画框后的旧照片里，雷恩和威尔逊穿着白袍，站在教堂地窖入口。照片背面写着：‘第七位之后，门将回应。’","failure_text":"画框确实被频繁移动过，但墙后没有暗格。也许你漏掉了更细小的东西。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"office_unlock_archives","label":"用万能钥匙打开档案室","type":"USE","location":"loc_office","target":"loc_archives","duration_minutes":1,"skill":null,"difficulty":"regular","aliases":["开档案室","用钥匙开门","解锁档案室"],
+      "requirements":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_archive_key"},{"subject":"fact:f_archive_locked","predicate":"value","operator":"eq","value":true}],"forbidden":[],
+      "success_effects":[{"op":"set_fact","params":{"fact_id":"f_archive_locked","value":false}}],"failure_effects":[],"always_effects":[],
+      "success_text":"黄铜钥匙顺利转动，档案室的铁门无声弹开。","once":true,"suggest":true,"risk":"safe","category":"other"
+    },
+    {
+      "id":"office_force_archives","label":"撬开档案室铁门","type":"FORCE","location":"loc_office","target":"loc_archives","duration_minutes":5,"skill":"athletics","difficulty":"hard","aliases":["踹开档案室","撬门","强行开档案室"],
+      "requirements":[{"subject":"fact:f_archive_locked","predicate":"value","operator":"eq","value":true}],"forbidden":[],
+      "success_effects":[{"op":"set_fact","params":{"fact_id":"f_archive_locked","value":false}},{"op":"set_fact","params":{"fact_id":"f_wilson_alerted","value":true}}],
+      "failure_effects":[{"op":"modify_player","params":{"field":"hp","delta":-1}},{"op":"set_fact","params":{"fact_id":"f_wilson_alerted","value":true}}],"always_effects":[],
+      "success_text":"铁门锁舌崩开，巨响沿走廊传出去。你进去了，也肯定惊动了某个人。","failure_text":"铁门纹丝不动，反作用力震伤了你的手腕；走廊深处传来脚步回应。","once":false,"suggest":true,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"archives_take_records","label":"查找并带走异常治疗病历","type":"SEARCH","location":"loc_archives","target":"item_records","duration_minutes":12,"skill":"observation","difficulty":"regular","aliases":["搜病历","找死亡记录","检查档案","拿走病历"],
+      "requirements":[{"subject":"fact:f_archive_locked","predicate":"value","operator":"eq","value":false},{"subject":"fact:f_records_intact","predicate":"value","operator":"eq","value":true}],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_records_pattern"}},{"op":"add_inventory","params":{"item_id":"item_records"}},{"op":"cancel_event","params":{"event_id":"scheduled_wilson_burns_records"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"六份病历呈现出相同规律：没有亲属的病人在教堂钟响当夜死亡。你把关键病历收入包中，威尔逊再也烧不掉它们。","failure_text":"编号体系被人故意打乱，你在时间压力下没能找出完整关联。","once":true,"suggest":true,"risk":"uncertain","category":"investigate"
+    },
+    {
+      "id":"archives_search_ashes","label":"从烧毁病历的灰烬中拼出记录","type":"SEARCH","location":"loc_archives","target":"loc_archives","duration_minutes":10,"skill":"observation","difficulty":"hard","aliases":["查灰烬","看烧掉的病历","找残页","拼病历"],
+      "requirements":[{"subject":"fact:f_archive_locked","predicate":"value","operator":"eq","value":false},{"subject":"fact:f_records_intact","predicate":"value","operator":"eq","value":false}],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_records_pattern"}}],"failure_effects":[{"op":"modify_player","params":{"field":"stress","delta":1}}],"always_effects":[],
+      "success_text":"大部分纸页已经焦黑，但残存的日期足够拼出规律：六次死亡都发生在教堂钟响的夜晚。真相没有随着纸张完全消失。","failure_text":"灰烬在指间碎裂，只剩几个人名。证据被毁的事实让时间压力更沉重。","once":true,"suggest":true,"risk":"uncertain","category":"investigate"
+    },
+    {
+      "id":"lobby_unlock_basement","label":"用万能钥匙打开地下室门","type":"USE","location":"loc_lobby","target":"loc_basement","duration_minutes":1,"skill":null,"difficulty":"regular","aliases":["开地下室","用钥匙开地下室","解锁地下室"],
+      "requirements":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_archive_key"},{"subject":"fact:f_basement_locked","predicate":"value","operator":"eq","value":true}],"forbidden":[],
+      "success_effects":[{"op":"set_fact","params":{"fact_id":"f_basement_locked","value":false}}],"failure_effects":[],"always_effects":[],
+      "success_text":"万能钥匙打开了地下室的厚木门，一股潮湿铁锈味从楼梯下涌上来。","once":true,"suggest":true,"risk":"uncertain","category":"risk"
+    },
+    {
+      "id":"lobby_force_basement","label":"强行撞开地下室门","type":"FORCE","location":"loc_lobby","target":"loc_basement","duration_minutes":4,"skill":"athletics","difficulty":"regular","aliases":["踹地下室门","撞门","破坏地下室锁"],
+      "requirements":[{"subject":"fact:f_basement_locked","predicate":"value","operator":"eq","value":true}],"forbidden":[],
+      "success_effects":[{"op":"set_fact","params":{"fact_id":"f_basement_locked","value":false}},{"op":"set_fact","params":{"fact_id":"f_wilson_alerted","value":true}}],
+      "failure_effects":[{"op":"modify_player","params":{"field":"hp","delta":-1}},{"op":"set_fact","params":{"fact_id":"f_wilson_alerted","value":true}}],"always_effects":[],
+      "success_text":"门闩断裂。楼梯下方有人迅速拖动金属物件，你已经暴露了自己的到来。","failure_text":"门板承受住撞击，你的肩膀却没有。地下传来一声短促的停顿。","once":false,"suggest":true,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"basement_follow_trail","label":"检查血迹与泥脚印","type":"SEARCH","location":"loc_basement","target":"loc_basement","duration_minutes":7,"skill":"observation","difficulty":"regular","aliases":["看血迹","跟踪脚印","搜地下室","找隧道"],
+      "requirements":[{"subject":"fact:f_basement_locked","predicate":"value","operator":"eq","value":false}],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_tunnel_blood"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"血迹属于最近受伤的人，泥土却不是医院地基的颜色。它们消失在朝教堂延伸的砖墙暗门后。","failure_text":"锅炉漏水冲淡了痕迹，你只确认这里最近有人搬运过重物。","once":true,"suggest":true,"risk":"uncertain","category":"investigate"
+    },
+    {
+      "id":"basement_rescue_samuel","label":"寻找并救出塞缪尔·里德","type":"RESCUE","location":"loc_basement","target":"npc_samuel","duration_minutes":9,"skill":"medicine","difficulty":"regular","aliases":["找里德","救记者","寻找塞缪尔","检查储煤间"],
+      "requirements":[{"subject":"fact:f_basement_locked","predicate":"value","operator":"eq","value":false}],"forbidden":[{"subject":"flag:samuel_rescued","predicate":"value","operator":"eq","value":true}],
+      "success_effects":[{"op":"set_entity_active","params":{"entity_id":"npc_samuel","active":true}},{"op":"reveal_fact","params":{"fact_id":"f_samuel_testimony"}},{"op":"add_inventory","params":{"item_id":"item_reed_notebook"}},{"op":"mark_flag","params":{"key":"samuel_rescued","value":true,"visible":true}}],
+      "failure_effects":[{"op":"modify_player","params":{"field":"stress","delta":1}}],"always_effects":[],
+      "success_text":"你在储煤间夹墙里找到虚弱但清醒的里德。他说雷恩会在十一点完成仪式，并把沾血的笔记本交给你。","failure_text":"你听见墙后有人呼吸，却找不到开启夹墙的机关。拖延正在消耗里德所剩不多的时间。",
+      "success_beats":["储煤间最里面的砖墙传回一阵极轻的敲击。你扒开堆到齐腰高的煤袋，在伪装成灰缝的位置摸到一块可以向内推动的松砖。","夹墙里蜷着一个满脸煤灰的男人，手腕被铁丝勒出血痕。他还保持清醒，第一句话便是： “我是塞缪尔·里德。先关门——威尔逊可能会回来。”","“雷恩今晚十一点要在教堂完成仪式。他们一直从医院挑没有亲属的病人，病历只是用来让这些人从世界上消失。”","里德把一本沾血的笔记塞进你手里。 “隧道能直通教堂。拿着这个走；如果我们分开，至少让其中一个人把证据带出去。”"],
+      "failure_beats":["储煤间深处传来一声压抑的喘息，随即被锅炉的轰鸣吞没。你贴近砖墙，能够确认后面藏着一个活人。","墙面没有门缝，松动的砖块后也只有交错的铁件。你听见里面的人试图移动，随后传来铁链刮过地面的声音。","你还没有找到开启夹墙的机关。每一次徒劳敲击都在消耗里面那个人所剩不多的体力，也可能把威尔逊引回来。"],"once":true,"suggest":true,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"house_search_study","label":"搜查雷恩住宅的书房","type":"SEARCH","location":"loc_house","target":"loc_house","duration_minutes":10,"skill":"observation","difficulty":"regular","aliases":["搜院长家","查书房","找雷恩信件","搜住宅"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_wren_letter"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"壁炉里有一封没烧净的指令信：十一点完成仪式，威尔逊负责销毁医院记录。落款是雷恩的私人印章。","failure_text":"书房像被提前清理过，只留下尚有余温的壁炉和一地灰屑。","once":true,"suggest":true,"risk":"uncertain","category":"investigate"
+    },
+    {
+      "id":"chapel_talk_doyle","label":"要求多伊尔神父说出真相","type":"TALK","location":"loc_chapel","target":"npc_doyle","duration_minutes":6,"skill":"persuasion","difficulty":"regular","aliases":["问神父","逼多伊尔坦白","和神父说话","询问地窖"],"dialogue_text":"“多伊尔神父，已经有人为你的沉默付出代价了。现在看着我，把地窖里的真相说出来。”",
+      "requirements":[{"subject":"entity:npc_doyle","predicate":"active","operator":"eq","value":true}],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_doyle_confession"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"多伊尔终于承认：他替雷恩打开过地窖，以为送来的是尸体，直到其中一人睁开眼睛。他指向祭坛后的暗门。","failure_text":"神父不断重复自己只是看守教堂，但他始终挡在祭坛暗门前。",
+      "success_beats":["多伊尔的肩膀像被那句话压垮了。他扶住祭坛边缘，盯着自己沾满蜡油的手，许久没有再念祷词。","“是我开的门。雷恩说送来的是无人认领的尸体，是为了做最后的祷告。我信了他——或者说，我让自己相信了。”","“第三次搬运时，担架上的人睁开了眼睛。他看着我，嘴被布条堵住，却还在求救。我还是把门关上了。”","神父向旁边挪开一步，露出祭坛后几乎与石墙融为一体的暗门。 “地窖就在下面。今晚他们还会带一个人进去。愿上帝原谅我，因为我不敢跟你下去。”"],
+      "failure_beats":["多伊尔把祷告书按在胸前，身体却始终挡着祭坛后方。他的回答像背诵过太多次，每个字都平整得没有缝隙。","“我只是这座教堂的看守。医院的事务与我无关，你所说的地窖也早已封死。”","“请离开。”他说着，却下意识用后背抵住墙上的一块旧石板，“这里没有你要找的人。”"],"once":true,"suggest":true,"risk":"uncertain","category":"social"
+    },
+    {
+      "id":"chapel_inspect_altar","label":"检查祭坛上的白色纹章","type":"EXAMINE","location":"loc_chapel","target":"loc_chapel","duration_minutes":6,"skill":"occult","difficulty":"regular","aliases":["看祭坛","检查符号","研究纹章","调查蜡烛"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_ritual_symbols"}}],"failure_effects":[],"always_effects":[],
+      "sanity_check":{"success_loss":"0","failure_loss":"1d3","reason":"看见祭坛纹章在视野边缘自行闭合","on":"always","once":true},
+      "success_text":"纹章并非祈祷图样，而是一幅未闭合的约束结构；病历边缘的符号正是它的分段。破坏中央三支白烛便能使结构失衡。","failure_text":"线条在视野边缘仿佛自行闭合。你移开目光时，发现手心已被指甲掐出血痕。",
+      "success_beats":["祭坛上的白色纹章不是画上去的。细粉嵌进石材裂隙，又被蜡油一层层固定，说明有人在不同夜晚反复补全它。","你把病历边缘记下的符号与纹章逐段对照，终于看出这些线条并非祈祷图样，而是一幅尚未完全闭合的约束结构。每一名病人对应其中一个分段。","结构的力量集中在中央三支白烛之间。它们既是仪式的支点，也是最脆弱的地方；只要在闭合前破坏三支蜡烛，整幅纹章便会失去平衡。"],
+      "failure_beats":["你试图沿着纹章寻找起点，线条却在视野边缘缓慢移动。每当目光转向一处，另一处便像自行闭合般补上缺口。","耳边的钟声并未真正响起，牙齿却感到了同样的震动。你猛然移开视线，才发现掌心已经被自己的指甲掐出数道血痕。","你记住了图案的轮廓，却没能理解它的结构。继续凝视只会让那些白线在意识里扎得更深。"],"once":true,"suggest":true,"risk":"dangerous","category":"investigate"
+    },
+    {
+      "id":"chapel_enter_crypt","label":"推开祭坛后的暗门进入地窖","type":"MOVE","location":"loc_chapel","target":"loc_crypt","duration_minutes":2,"skill":null,"difficulty":"regular","aliases":["进地窖","打开暗门","去教堂地下","下去阻止仪式"],
+      "requirements":[{"subject":"player","predicate":"clue_count","operator":"gte","value":1}],"forbidden":[],
+      "success_effects":[{"op":"move_entity","params":{"entity_id":"player","destination":"loc_crypt"}}],"failure_effects":[],"always_effects":[],
+      "sanity_check":{"success_loss":"0","failure_loss":"1d4","reason":"踏入回荡着非人圣咏的地下仪式场","on":"success","once":true},
+      "success_text":"暗门后是一段向下的石阶。圣咏声不再来自远处，而是从你脚下每一块石头里渗出。","once":false,"suggest":true,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"crypt_disrupt_ritual","label":"破坏仪式的三处锚点","type":"DISRUPT","location":"loc_crypt","target":"threat_ritual","duration_minutes":8,"skill":"occult","difficulty":"regular","aliases":["阻止仪式","破坏法阵","打碎蜡烛","中断圣咏"],
+      "requirements":[{"subject":"player","predicate":"clue_count","operator":"gte","value":3}],"forbidden":[{"subject":"flag:ritual_disrupted","predicate":"value","operator":"eq","value":true}],
+      "success_effects":[{"op":"mark_flag","params":{"key":"ritual_disrupted","value":true,"visible":true}},{"op":"cancel_event","params":{"event_id":"scheduled_ritual_75","if_present":true}},{"op":"cancel_event","params":{"event_id":"scheduled_ritual_complete","if_present":true}},{"op":"advance_threat","params":{"threat_id":"threat_ritual","amount":-35}}],
+      "failure_effects":[{"op":"advance_threat","params":{"threat_id":"threat_ritual","amount":10}}],"always_effects":[],
+      "sanity_check":{"success_loss":"0","failure_loss":"1d4","reason":"目睹破坏错误锚点后所有影子同时转头","on":"failure","once":true},
+      "success_text":"你按线索找出三处锚点，逐一打碎白烛。纹章像受伤的眼睛般收缩，圣咏骤然失去统一节拍。仪式被破坏了。","failure_text":"你破坏了错误的线段。白色纹章反而亮起，石室里所有影子同时朝你转头。","once":true,"suggest":true,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"crypt_confront_wren","label":"用证据迫使雷恩退让","type":"CONFRONT","location":"loc_crypt","target":"npc_wren","duration_minutes":5,"skill":"persuasion","difficulty":"hard","aliases":["对质雷恩","揭穿院长","拿证据威胁雷恩","说服雷恩"],
+      "requirements":[{"subject":"player","predicate":"clue_count","operator":"gte","value":5},{"subject":"entity:npc_wren","predicate":"location","operator":"eq","value":"loc_crypt"}],"forbidden":[],
+      "opposed":{"entity_id":"npc_wren","skill":"pow","label":"雷恩的意志","response":"oppose","tie_favors":"opponent","both_fail_no_winner":false},
+      "success_effects":[{"op":"mark_flag","params":{"key":"wren_defeated","value":true,"visible":true}},{"op":"mark_flag","params":{"key":"ritual_disrupted","value":true,"visible":true}},{"op":"cancel_event","params":{"event_id":"scheduled_ritual_complete","if_present":true}}],
+      "failure_effects":[{"op":"damage_player","params":{"amount":"1d4"}}],"always_effects":[],
+      "success_text":"你逐项念出账目、病历与证词。雷恩的镇定第一次崩裂；多伊尔趁机扯断钟绳，教众的节拍随之瓦解。","failure_text":"雷恩没有否认，只冷静指出这里没有警察，也没有陪审团。威尔逊从阴影中扑来，你受伤后勉强拉开距离。","once":true,"suggest":true,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"crypt_return_chapel","label":"撤回教堂正厅","type":"MOVE","location":"loc_crypt","target":"loc_chapel","duration_minutes":2,"skill":null,"difficulty":"regular","aliases":["离开地窖","回教堂","撤退"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"move_entity","params":{"entity_id":"player","destination":"loc_chapel"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"你沿石阶退回教堂正厅，寒风从破窗灌进来。","once":false,"suggest":true,"risk":"safe","category":"move"
+    },
+    {
+      "id":"road_escape","label":"带着现有证据撤往镇上","type":"ESCAPE","location":"loc_road","target":"loc_road","duration_minutes":3,"skill":null,"difficulty":"regular","aliases":["离开","逃走","回镇上","结束调查","带证据走"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"mark_flag","params":{"key":"escaped","value":true,"visible":true}}],"failure_effects":[],"always_effects":[],
+      "success_text":"你踏上通往镇子的积雪公路。身后的医院与教堂被风雪慢慢遮住，但你带走的东西将决定这个夜晚如何被记住。","once":true,"suggest":true,"risk":"safe","category":"move"
+    },
+    {
+      "id":"director_follow_hint_records","label":"追查安娜提到的病历副本","type":"SEARCH","location":"loc_ward","target":"npc_anna","duration_minutes":5,"skill":"observation","difficulty":"regular","aliases":["找病历副本","追查新线索","问安娜病历"],
+      "requirements":[{"subject":"flag:director_clue_opportunity","predicate":"value","operator":"eq","value":true}],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_records_pattern"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_records_pattern"}},{"op":"mark_flag","params":{"key":"director_clue_opportunity","value":false}}],"failure_effects":[],"always_effects":[],
+      "success_text":"安娜想起自己曾抄过一份死亡日期清单。那份副本足以证明病人的死亡与教堂钟声存在规律。","failure_text":"安娜记得有副本，却一时想不起藏在何处。至少这条路仍然存在。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"wait_five_minutes","label":"停下来观察五分钟","type":"WAIT","location":null,"target":null,"duration_minutes":5,"skill":null,"difficulty":"regular","aliases":["等待","等五分钟","观察一会","什么也不做"],"requirements":[],"forbidden":[],
+      "success_effects":[],"failure_effects":[],"always_effects":[],"success_text":"你停下来听这座建筑的动静。时间没有停下，远处某扇门悄悄合拢。","once":false,"suggest":false,"risk":"uncertain","category":"other"
+    }
+  ],
+  "complications": [
+    {
+      "id":"complication_wilson_alert","label":"威尔逊意识到有人正在调查","requirements":[{"subject":"fact:f_wilson_alerted","predicate":"value","operator":"eq","value":false}],
+      "effects":[{"op":"set_fact","params":{"fact_id":"f_wilson_alerted","value":true}},{"op":"advance_threat","params":{"threat_id":"threat_ritual","amount":5}}],
+      "world_justification":"玩家留下的搜查痕迹会被负责清理医院的威尔逊发现。"
+    },
+    {
+      "id":"complication_choir_accelerates","label":"圣咏会提前一段准备工作","requirements":[{"subject":"threat:threat_ritual","predicate":"progress","operator":"lte","value":70}],
+      "effects":[{"op":"advance_threat","params":{"threat_id":"threat_ritual","amount":5}}],
+      "world_justification":"教众已经在地窖集结，可以缩短尚未公开的准备步骤。"
+    }
+  ],
+  "respites": [
+    {
+      "id":"respite_anna_supplies","label":"安娜提供急救与短暂藏身处","requirements":[{"subject":"entity:npc_anna","predicate":"active","operator":"eq","value":true},{"subject":"player","predicate":"stress","operator":"gte","value":2}],
+      "effects":[{"op":"modify_player","params":{"field":"stress","delta":-2}},{"op":"modify_player","params":{"field":"sanity","delta":1}},{"op":"modify_player","params":{"field":"hp","delta":1}}],
+      "world_justification":"安娜本就怀疑医院，并掌握一间可从内部反锁的配药室。"
+    },
+    {
+      "id":"respite_anna_grounding","label":"在配药室重新确认现实","requirements":[{"subject":"entity:npc_anna","predicate":"active","operator":"eq","value":true},{"subject":"player","predicate":"sanity","operator":"lte","value":60}],
+      "effects":[{"op":"modify_player","params":{"field":"sanity","delta":1}}],
+      "world_justification":"安娜用专业、具体的问答帮助你把注意力从圣咏拉回眼前可验证的事实。"
+    }
+  ],
+  "endings": [
+    {
+      "id":"death","title":"调查终止","status":"LOST","priority":1,
+      "requirements":[{"subject":"flag:dead","predicate":"value","operator":"eq","value":true}],
+      "narrative":"一次致命重创让你的意识倒在风雪与圣咏之间。圣玛丽医院仍会在明天宣称，这里从未接待过一名调查员。"
+    },
+    {
+      "id":"permanent_insanity","title":"圣咏之后","status":"LOST","priority":2,
+      "requirements":[{"subject":"flag:permanently_insane","predicate":"value","operator":"eq","value":true}],
+      "narrative":"圣咏占据了全部现实。即使你被人带离医院，也再无法把那个夜晚整理成能够作证的记忆。"
+    },
+    {
+      "id":"incapacitated","title":"倒在风雪中","status":"LOST","priority":3,
+      "requirements":[{"subject":"player","predicate":"hp","operator":"lte","value":0}],
+      "narrative":"伤势让你失去行动能力。在没有同伴的调查中，这已足以让圣玛丽医院的秘密继续留到明天。"
+    },
+    {
+      "id":"ritual_complete","title":"静默降临","status":"LOST","priority":2,
+      "requirements":[{"subject":"threat:threat_ritual","predicate":"progress","operator":"gte","value":100}],
+      "narrative":"最后一声钟鸣落下，医院所有窗户同时变成乳白色。声音从世界上退去；你张口呼喊，却连自己的呼吸也听不见。静默仪式完成了。"
+    },
+    {
+      "id":"truth_rescue_and_silence","title":"带回黎明的证词","status":"WON","priority":10,
+      "requirements":[{"subject":"flag:escaped","predicate":"value","operator":"eq","value":true},{"subject":"flag:ritual_disrupted","predicate":"value","operator":"eq","value":true},{"subject":"flag:samuel_rescued","predicate":"value","operator":"eq","value":true},{"subject":"player","predicate":"clue_count","operator":"gte","value":5}],
+      "narrative":"天亮前，你和里德抵达镇上。账目、病历、照片与证词彼此印证，雷恩无法再把一切解释成疯言疯语。教堂的钟再没有响起。圣玛丽医院的真相终于拥有了能活着讲述它的人。"
+    },
+    {
+      "id":"ritual_stopped","title":"不完整的胜利","status":"WON","priority":20,
+      "requirements":[{"subject":"flag:escaped","predicate":"value","operator":"eq","value":true},{"subject":"flag:ritual_disrupted","predicate":"value","operator":"eq","value":true}],
+      "narrative":"你阻止了那个夜晚最可怕的结果。证据或证人仍有缺口，雷恩也许还能逃避审判，但地窖里的圣咏已经中断。至少今夜，没有第七位病人消失。"
+    },
+    {
+      "id":"escaped_with_truth","title":"风雪中的证据","status":"ESCAPED","priority":30,
+      "requirements":[{"subject":"flag:escaped","predicate":"value","operator":"eq","value":true},{"subject":"player","predicate":"clue_count","operator":"gte","value":5}],
+      "narrative":"你带着足以指向雷恩的证据离开医院，但教堂钟声仍在身后继续。真相可能得到审判，只是有人必须为你没能阻止的那个夜晚付出代价。"
+    },
+    {
+      "id":"escaped_alive","title":"独自离开","status":"ESCAPED","priority":40,
+      "requirements":[{"subject":"flag:escaped","predicate":"value","operator":"eq","value":true}],
+      "narrative":"你活着离开了圣玛丽医院。手里的零散线索难以说服任何人，而风雪吞没了最后一声钟响。有些门一旦在身后关上，就不会再为证人开启。"
+    }
+  ],
+  "location_graph": {
+    "loc_lobby":{"loc_ward":4,"loc_office":2,"loc_basement":3,"loc_road":5},
+    "loc_ward":{"loc_lobby":4},
+    "loc_office":{"loc_lobby":2,"loc_archives":2,"loc_house":7},
+    "loc_archives":{"loc_office":2},
+    "loc_basement":{"loc_lobby":3,"loc_chapel":8},
+    "loc_house":{"loc_office":7,"loc_road":6,"loc_chapel":7},
+    "loc_chapel":{"loc_basement":8,"loc_house":7,"loc_road":12},
+    "loc_crypt":{},
+    "loc_road":{"loc_lobby":5,"loc_house":6,"loc_chapel":12}
+  }
+}

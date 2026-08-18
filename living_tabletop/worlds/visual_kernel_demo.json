@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "id": "corbitt_house_visual_kernel_demo",
+  "version": "1.0.1",
+  "title": "科比特宅邸·视觉世界内核演示",
+  "start_time": "1920-09-18T17:45:00",
+  "locations": [
+    {
+      "id": "loc_street",
+      "name": "谢斐街",
+      "x": 10,
+      "y": 48,
+      "initially_known": true,
+      "description": "雨后的街道泛着昏黄灯光，宅邸立在铁栅栏后。",
+      "tags": ["outside"]
+    },
+    {
+      "id": "loc_foyer",
+      "name": "门厅",
+      "parent_id": "loc_house",
+      "x": 35,
+      "y": 48,
+      "initially_known": true,
+      "description": "门厅狭长，墙纸受潮卷曲，空气里有旧木头的气味。"
+    },
+    {
+      "id": "loc_hall",
+      "name": "一层走廊",
+      "parent_id": "loc_house",
+      "x": 62,
+      "y": 38,
+      "initially_known": true,
+      "description": "走廊通向几间封闭的房间，尽头堆着一张沉重书桌。"
+    },
+    {
+      "id": "loc_basement",
+      "name": "地下室",
+      "parent_id": "loc_house",
+      "x": 82,
+      "y": 72,
+      "initially_known": false,
+      "description": "石阶通向潮湿黑暗，墙后传来几乎听不见的摩擦声。",
+      "tags": ["hidden", "dangerous"]
+    },
+    {
+      "id": "loc_house",
+      "name": "科比特宅邸",
+      "x": 55,
+      "y": 12,
+      "initially_known": true,
+      "description": "一栋年久失修的两层住宅。",
+      "tags": ["region"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn_street_foyer",
+      "name": "宅邸正门",
+      "from_location": "loc_street",
+      "to_location": "loc_foyer",
+      "bidirectional": true,
+      "travel_minutes": 2,
+      "initial_state": {"open": true, "locked": false, "discovered": true}
+    },
+    {
+      "id": "conn_foyer_hall",
+      "name": "门厅内门",
+      "from_location": "loc_foyer",
+      "to_location": "loc_hall",
+      "bidirectional": true,
+      "travel_minutes": 2,
+      "initial_state": {"open": true, "locked": false, "discovered": true}
+    },
+    {
+      "id": "conn_hall_basement",
+      "name": "隐蔽的地下室门",
+      "from_location": "loc_hall",
+      "to_location": "loc_basement",
+      "bidirectional": true,
+      "travel_minutes": 3,
+      "initial_state": {
+        "open": false,
+        "locked": true,
+        "discovered": false,
+        "key_id": "obj_brass_key"
+      }
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "actor",
+      "name": "调查员",
+      "initial_placement": {"kind": "at_location", "target_id": "loc_street"},
+      "description": "受委托调查这栋宅邸的来访者。",
+      "tags": ["player"]
+    },
+    {
+      "id": "npc_caretaker",
+      "kind": "actor",
+      "name": "守屋人莫里斯",
+      "initial_placement": {"kind": "at_location", "target_id": "loc_foyer"},
+      "description": "一个神情疲惫的老人，似乎急着离开这里。",
+      "tags": ["npc"]
+    },
+    {
+      "id": "obj_desk",
+      "kind": "object",
+      "name": "沉重书桌",
+      "initial_placement": {"kind": "at_location", "target_id": "loc_hall"},
+      "description": "抽屉被人匆忙翻过，桌脚在地板上留下新鲜划痕。",
+      "tags": ["furniture", "container"]
+    },
+    {
+      "id": "obj_brass_key",
+      "kind": "object",
+      "name": "黄铜钥匙",
+      "initial_placement": {"kind": "at_location", "target_id": "loc_hall"},
+      "description": "钥匙齿很长，沾着尚未干透的黑色泥土。",
+      "tags": ["portable", "key"]
+    },
+    {
+      "id": "obj_cellar_marks",
+      "kind": "object",
+      "name": "墙边的拖痕",
+      "initial_placement": {"kind": "at_location", "target_id": "loc_hall"},
+      "description": "书桌后方的墙板与地面之间有一道不自然的缝隙。",
+      "attributes": {"reveals_connection_id": "conn_hall_basement"},
+      "tags": ["clue", "fixed"]
+    }
+  ],
+  "propositions": [
+    {
+      "id": "fact_house_address",
+      "subject": "loc_house",
+      "predicate": "address",
+      "value": "谢斐街二十号",
+      "canon": "hard_canon",
+      "source": "case_file"
+    },
+    {
+      "id": "fact_hidden_cellar",
+      "subject": "obj_cellar_marks",
+      "predicate": "conceals",
+      "value": "conn_hall_basement",
+      "canon": "hard_canon",
+      "discoverable_via": ["inspect:obj_cellar_marks"]
+    },
+    {
+      "id": "fact_caretaker_fear",
+      "subject": "npc_caretaker",
+      "predicate": "fears",
+      "value": "来自地下的敲击声",
+      "canon": "hard_canon",
+      "discoverable_via": ["inspect:npc_caretaker"]
+    }
+  ],
+  "initial_knowledge": [
+    {
+      "observer_id": "player",
+      "proposition_id": "fact_house_address",
+      "stance": "known",
+      "confidence": 1.0,
+      "source": "委托书"
+    }
+  ],
+  "state_variables": [
+    {
+      "id": "world.storm_active",
+      "value_type": "bool",
+      "initial_value": false,
+      "mutable_by": ["system", "script"]
+    }
+  ],
+  "scheduled_triggers": [
+    {
+      "id": "trigger_house_stirs",
+      "scheduled_time": "1920-09-18T17:56:00",
+      "priority": 20,
+      "interrupt": true,
+      "events": [
+        {
+          "type": "HouseStirred",
+          "target_id": "player",
+          "payload": {
+            "description": "头顶传来三下沉重撞击，尘土从天花板缝隙簌簌落下。"
+          },
+          "visibility": "public"
+        }
+      ]
+    }
+  ]
+}

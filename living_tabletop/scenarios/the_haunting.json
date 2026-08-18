@@ -1,0 +1,475 @@
+{
+  "id": "the_haunting_corbitt_house_v1",
+  "title": "科比特宅邸",
+  "subtitle": "1920 年波士顿。一桩出租屋悲剧，指向一位不肯离去的旧主人。",
+  "start_time": "1920-09-17T09:00:00",
+  "opening_narrative": "咖啡馆的晨光落在一串旧宅钥匙上。房东史蒂文·诺特请你调查位于谢夫街的科比特宅邸：上一户租客马卡里奥一家在那里遭遇惨剧，此后再无人愿意入住。诺特想知道房子究竟出了什么问题，也希望你能证明它仍可安全出租。城市已经醒来，报社、图书馆与市政档案都在营业；你也可以现在就去那栋房子。",
+  "start_location": "loc_cafe",
+  "minimum_evidence": 5,
+  "source": {
+    "title": "The Haunting (Call of Cthulhu Quick-Start Rules)",
+    "publisher": "Chaosium Inc.",
+    "authors": ["Sandy Petersen"],
+    "url": "https://www.chaosium.com/cthulhu-quickstart/",
+    "rights_note": "官方提供免费 Quick-Start 下载，但作品仍受版权保护；免费获取不等于开放许可。",
+    "adaptation_note": "本场景仅保留调查拓扑、人物关系与核心因果，全部中文叙述为重新概述；未收录原文、手卡、地图、美术或《克苏鲁的呼唤》规则。"
+  },
+  "presentation": {
+    "case_label": "LIVING TABLETOP · CLASSIC CASE",
+    "headline": "有些房客从未真正搬走。",
+    "description": "1920 年波士顿。受房东委托调查一栋声名狼藉的旧宅。先查档案、拜访幸存者，或直接带着钥匙登门——所有路线都通向同一个地下秘密。",
+    "start_button": "接过旧宅钥匙",
+    "session_note": "CoC 7版基础规则 · 单人 · 多路线调查",
+    "free_action_placeholder": "例如：去报社查找这栋房子的旧新闻……"
+  },
+  "initial_flags": {
+    "corbitt_destroyed": false,
+    "corbitt_weakened": false,
+    "corbitt_encountered": false,
+    "corbitt_alert": false,
+    "corbitt_hostile": false,
+    "house_uneasy": false,
+    "bed_attack_seen": false,
+    "basement_power": false,
+    "director_case_note": false,
+    "case_closed": false,
+    "false_report": false,
+    "escaped": false
+  },
+  "movement_requirements": {
+    "loc_house_exterior->loc_house_ground": [
+      {"subject":"player","predicate":"inventory","operator":"contains","value":"item_house_key"}
+    ]
+  },
+  "director_config": {
+    "primary_threat_id": "threat_corbitt_awareness",
+    "progress_flags": ["corbitt_destroyed"],
+    "hint_opportunities": [
+      {
+        "id": "hint_knott_case_note",
+        "label": "重读诺特的地址笔记",
+        "requirements": [
+          {"subject":"flag:director_case_note","predicate":"value","operator":"eq","value":false},
+          {"subject":"player","predicate":"knowledge","operator":"not_known","value":"f_house_violent_history"}
+        ],
+        "effects": [
+          {"op":"mark_flag","params":{"key":"director_case_note","value":true,"visible":true}}
+        ],
+        "world_justification": "诺特将写有前租客姓名和宅邸地址的便笺推到你手边，没有催促，只让它安静地留在咖啡杯旁。",
+        "affected_entities": ["npc_knott", "f_house_violent_history"]
+      }
+    ]
+  },
+  "entities": [
+    {"id":"player","type":"PLAYER","name":"调查员","location":"loc_cafe","attributes":{},"tags":["human"],"active":true},
+
+    {"id":"loc_cafe","type":"LOCATION","name":"诺特约见的咖啡馆","attributes":{"description":"靠窗桌上放着委托书、二十美元预付款和一串旧钥匙。"},"tags":["city","safe"],"active":true},
+    {"id":"loc_globe","type":"LOCATION","name":"《波士顿环球报》资料室","attributes":{"description":"印刷机的震动穿过地板，地下剪报库里满是灰尘和热气。"},"tags":["city","research"],"active":true},
+    {"id":"loc_library","type":"LOCATION","name":"中央图书馆","attributes":{"description":"城市史、讣告与旧地产目录分散在不同阅览区。"},"tags":["city","research"],"active":true},
+    {"id":"loc_records","type":"LOCATION","name":"市政档案馆","attributes":{"description":"房产、遗嘱与教会登记按年份锁在高柜中。"},"tags":["city","research"],"active":true},
+    {"id":"loc_police","type":"LOCATION","name":"中央警署档案室","attributes":{"description":"旧案卷并不向普通访客开放，值班员也不欢迎追问。"},"tags":["city","research"],"active":true},
+    {"id":"loc_neighborhood","type":"LOCATION","name":"谢夫街街区","attributes":{"description":"办公楼夹着唯一一栋旧住宅，报摊老板记得这里过去的住户。"},"tags":["city"],"active":true},
+    {"id":"loc_sanitarium","type":"LOCATION","name":"罗克斯伯里疗养院","attributes":{"description":"消毒水气味压不住病房里的低语；马卡里奥夫妇仍在这里。"},"tags":["city","hospital"],"active":true},
+    {"id":"loc_chapel","type":"LOCATION","name":"静观教堂废墟","attributes":{"description":"烧毁的地基被杂草覆盖，新刷的眼形符号留在残墙上。"},"tags":["city","ruin","danger"],"active":true},
+    {"id":"loc_house_exterior","type":"LOCATION","name":"科比特宅邸门前","attributes":{"description":"旧砖房缩在两座高楼的阴影里，一层窗户都从内侧钉死。","entry_beats":["街上的车声到了这段路便显得遥远，门廊下只有雨水顺着破裂的檐槽滴落。","旧钥匙插进锁孔时阻力很大，门框里积着的灰说明它已经很久没有正常开启。"]},"tags":["house","outside"],"active":true},
+    {"id":"loc_house_ground","type":"LOCATION","name":"科比特宅邸一层","attributes":{"description":"客厅摆满宗教饰物，餐桌还留着腐坏的饭食，厨房通往地下室。","entry_beats":["门轴的呻吟在空屋里绕了一圈才停下，家具轮廓从灰暗中一件件显出来。","墙上的圣像蒙着油烟，玻璃镜框却偶尔接住窗外的微光，像有人刚刚转过脸。"]},"tags":["house"],"active":true},
+    {"id":"loc_house_upper","type":"LOCATION","name":"科比特宅邸二层","attributes":{"description":"夫妻卧室、儿童房与浴室都像仓促离开后被时间封住。","entry_beats":["楼梯最后几级在脚下明显下沉，二层走廊的墙纸被湿气顶出一串鼓包。","几扇房门停在不同角度，空气却没有流动，门缝里的黑暗也没有变化。"]},"tags":["house"],"active":true},
+    {"id":"loc_spare_bedroom","type":"LOCATION","name":"二层空卧室","attributes":{"description":"裸露床架正对一扇旧窗，房内有一股忽隐忽现的腐甜气味。","entry_beats":["地板中央几乎没有灰，仿佛某件沉重的东西曾在这里反复移动。","窗外是狭窄后巷；玻璃映出房门和床架，也映出站在门口的你。"]},"tags":["house","danger"],"active":true},
+    {"id":"loc_house_basement","type":"LOCATION","name":"科比特宅邸地下室","attributes":{"description":"坏掉的灯泡悬在危险楼梯下，木板墙后传出老鼠抓挠声。","entry_beats":["楼梯扶手摸上去微微发黏，每往下一步，街上的光就被厨房地板切掉一层。","地下室深处偶尔传来细碎摩擦，声音停下时，你反而更清楚地听见自己的呼吸。"]},"tags":["house","danger"],"active":true},
+    {"id":"loc_hidden_lair","type":"LOCATION","name":"墙后墓室","attributes":{"description":"泥地中央摆着一具木乃伊般的高瘦尸体，桌上纸张一触即碎。","entry_beats":["墙后的空气干冷得反常，入口处扬起的尘土久久没有落回地面。","低矮空间吞掉了屋内其他声音，只留下衣料摩擦和心跳在耳边放大。"]},"tags":["house","danger","lair"],"active":true},
+    {"id":"loc_street","type":"LOCATION","name":"离城街口","attributes":{"description":"从这里可以结束委托并离开波士顿；身后的旧宅仍藏在楼影中。"},"tags":["city","exit","safe"],"active":true},
+
+    {"id":"npc_knott","type":"NPC","name":"史蒂文·诺特","location":"loc_cafe","attributes":{"role":"房东","mood":"anxious"},"tags":["human","client"],"active":true},
+    {"id":"npc_arty","type":"NPC","name":"阿蒂·威尔莫特","location":"loc_globe","attributes":{"role":"报社编辑","mood":"self-important"},"tags":["human","gatekeeper"],"active":true},
+    {"id":"npc_dooley","type":"NPC","name":"杜利先生","location":"loc_neighborhood","attributes":{"role":"报摊老板","mood":"talkative"},"tags":["human","witness"],"active":true},
+    {"id":"npc_gabriela","type":"NPC","name":"加布里埃拉·马卡里奥","location":"loc_sanitarium","attributes":{"role":"前租客","mood":"frightened"},"tags":["human","witness"],"active":true},
+    {"id":"npc_vittorio","type":"NPC","name":"维托里奥·马卡里奥","location":"loc_sanitarium","attributes":{"role":"前租客","mood":"distraught"},"tags":["human","witness"],"active":true},
+    {"id":"creature_corbitt","type":"CREATURE","name":"沃尔特·科比特","location":"loc_hidden_lair","attributes":{"role":"不死术士","mood":"malicious","fighting":50,"dodge":25,"hp":16,"damage":"1d6"},"tags":["undead","hostile"],"active":false},
+
+    {"id":"item_house_key","type":"ITEM","name":"科比特宅邸钥匙","location":"player","attributes":{},"tags":["key"],"active":true},
+    {"id":"item_magic_dagger","type":"ITEM","name":"锈迹斑斑的仪式匕首","location":"loc_house_basement","attributes":{},"tags":["weapon","evidence"],"active":true},
+    {"id":"item_liber_ivonis","type":"ITEM","name":"虫蛀的拉丁文秘典","location":"loc_chapel","attributes":{},"tags":["book","evidence"],"active":true},
+    {"id":"item_corbitt_diaries","type":"ITEM","name":"科比特日记三卷","location":"loc_house_ground","attributes":{},"tags":["book","evidence"],"active":true},
+    {"id":"item_trash_lid","type":"ITEM","name":"金属垃圾桶盖","location":"loc_house_basement","attributes":{},"tags":["shield"],"active":true}
+  ],
+  "facts": [
+    {"id":"f_contract","subject":"player","predicate":"commission","value":"调查科比特宅邸并向诺特报告","visibility":"PLAYER","created_at":"1920-09-17T09:00:00","source":"scenario","immutable":true,"canon":"hard_canon"},
+    {"id":"f_macario_tragedy","subject":"loc_house_exterior","predicate":"last_tenants","value":"马卡里奥一家入住后相继精神崩溃并离开","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"npc_knott","immutable":true,"canon":"hard_canon"},
+    {"id":"f_house_violent_history","subject":"loc_house_exterior","predicate":"history","value":"数代住户遭遇疾病、事故、自杀与仓促搬离","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"boston_globe","immutable":true,"canon":"hard_canon"},
+    {"id":"f_corbitt_purchase","subject":"creature_corbitt","predicate":"purchased_house","value":"1835 年从最初建造者手中买下宅邸","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"central_library","immutable":true,"canon":"hard_canon"},
+    {"id":"f_corbitt_lawsuit","subject":"creature_corbitt","predicate":"neighbor_lawsuit","value":"邻居曾因其怪异危险的行为要求他迁离，但诉讼未成功","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"central_library","immutable":true,"canon":"hard_canon"},
+    {"id":"f_basement_burial","subject":"creature_corbitt","predicate":"burial_request","value":"遗嘱要求把他的遗体埋在自家地下室","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"central_library","immutable":true,"canon":"hard_canon"},
+    {"id":"f_chapel_link","subject":"creature_corbitt","predicate":"executor","value":"静观教堂的迈克尔·托马斯牧师执行了科比特的遗嘱","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"hall_of_records","immutable":true,"canon":"hard_canon"},
+    {"id":"f_chapel_raid","subject":"loc_chapel","predicate":"police_raid","value":"1912 年警方突袭教堂，多人死亡；案卷显示此后有人掩盖调查","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"police_archive","immutable":true,"canon":"hard_canon"},
+    {"id":"f_macario_sanitarium","subject":"npc_gabriela","predicate":"location","value":"马卡里奥夫妇被送往罗克斯伯里疗养院","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"npc_dooley","immutable":true,"canon":"hard_canon"},
+    {"id":"f_gabriela_testimony","subject":"loc_house_exterior","predicate":"haunting","value":"加布里埃拉见过夜间俯身逼近的邪恶存在，也目睹物件自行飞动","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"npc_gabriela","immutable":true,"canon":"hard_canon"},
+    {"id":"f_own_weapon","subject":"creature_corbitt","predicate":"weakness","value":"维托里奥反复暗示应以敌人自己的武器反制它","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"npc_vittorio","immutable":true,"canon":"hard_canon"},
+    {"id":"f_chapel_journal","subject":"loc_chapel","predicate":"burial_record","value":"教会活动日志确认科比特按其意愿葬在宅邸地下室","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"chapel_journal","immutable":true,"canon":"hard_canon"},
+    {"id":"f_corbitt_diaries","subject":"creature_corbitt","predicate":"occult_practice","value":"宅中日记记录了科比特长期进行召唤与控制仪式","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"corbitt_diaries","immutable":true,"canon":"hard_canon"},
+    {"id":"f_bed_attack","subject":"loc_spare_bedroom","predicate":"manifestation","value":"二层空卧室的床能受无形力量驱使，把人撞向窗户","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"direct_observation","immutable":true,"canon":"hard_canon"},
+    {"id":"f_hidden_wall","subject":"loc_house_basement","predicate":"concealed_space","value":"地下室木板墙后存在一片被封住的空腔","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"direct_observation","immutable":true,"canon":"hard_canon"},
+    {"id":"f_magic_dagger","subject":"item_magic_dagger","predicate":"animated_weapon","value":"匕首会自行浮起攻击侵入者，并受墙后存在控制","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"direct_observation","immutable":true,"canon":"hard_canon"},
+    {"id":"f_corbitt_undead","subject":"creature_corbitt","predicate":"state","value":"科比特的意识和干枯肉身仍在地下墓室中活动","visibility":"HIDDEN","created_at":"1920-09-17T09:00:00","source":"direct_observation","immutable":true,"canon":"hard_canon"}
+  ],
+  "relationships": [
+    {"subject":"npc_knott","relation":"hires","object":"player","value":0.65},
+    {"subject":"npc_gabriela","relation":"fears","object":"creature_corbitt","value":-1.0},
+    {"subject":"creature_corbitt","relation":"controls","object":"item_magic_dagger","value":1.0},
+    {"subject":"creature_corbitt","relation":"haunts","object":"loc_house_exterior","value":1.0}
+  ],
+  "player": {
+    "entity_id":"player",
+    "name":"调查员",
+    "hp":12,
+    "max_hp":12,
+    "stress":0,
+    "max_stress":10,
+    "characteristics":{"str":55,"con":60,"siz":60,"dex":60,"app":50,"int":70,"pow":60,"edu":70},
+    "sanity":60,
+    "max_sanity":99,
+    "starting_sanity":60,
+    "luck":55,
+    "max_luck":99,
+    "magic_points":12,
+    "move_rate":8,
+    "damage_bonus":"0",
+    "build":0,
+    "skills":{"observation":65,"research":60,"charm":55,"law":45,"agility":55,"force":50,"fight":55,"dodge":45,"first_aid":40,"psychology":40},
+    "inventory":["item_house_key"]
+  },
+  "initial_player_known_fact_ids": ["f_contract"],
+  "npc_knowledge": [
+    {"knower_id":"npc_knott","fact_id":"f_macario_tragedy","confidence":0.9,"source":"tenant history","learned_at":"1920-09-17T09:00:00","concealed":false},
+    {"knower_id":"npc_dooley","fact_id":"f_macario_sanitarium","confidence":0.8,"source":"neighborhood gossip","learned_at":"1920-09-17T09:00:00","concealed":false},
+    {"knower_id":"npc_gabriela","fact_id":"f_gabriela_testimony","confidence":1.0,"source":"direct experience","learned_at":"1920-09-17T09:00:00","concealed":false},
+    {"knower_id":"npc_vittorio","fact_id":"f_own_weapon","confidence":0.8,"source":"fragmented memory","learned_at":"1920-09-17T09:00:00","concealed":false}
+  ],
+  "events": [
+    {
+      "id":"event_knott_checkin","time":"1920-09-17T17:00:00","type":"client_checks_progress","actor":"npc_knott","target":"player","priority":50,"cancelable":false,"interrupt_action":false,"interrupt_locations":[],"conditions":[{"subject":"flag:case_closed","predicate":"value","operator":"eq","value":false}],"canceled":false,
+      "payload":{"always_visible":true,"text":"诺特打来电话询问进展。他没有催你立刻结案，但提醒你每多调查一天，房子的损失就会继续增加。","effects":[{"op":"advance_threat","params":{"threat_id":"threat_corbitt_awareness","amount":10}}]}
+    },
+    {
+      "id":"event_house_stirs","time":"1920-09-17T21:00:00","type":"house_stirs","actor":"creature_corbitt","target":"loc_house_exterior","priority":40,"cancelable":true,"interrupt_action":true,"interrupt_locations":["loc_house_ground","loc_house_upper","loc_spare_bedroom","loc_house_basement","loc_hidden_lair"],"conditions":[{"subject":"flag:corbitt_destroyed","predicate":"value","operator":"eq","value":false}],"canceled":false,
+      "payload":{"visible_locations":["loc_house_ground","loc_house_upper","loc_spare_bedroom","loc_house_basement","loc_hidden_lair"],"text":"整栋房子像被重物撞了一下。楼板、管道与钉死的窗框同时震响，随后又恢复安静。","effects":[{"op":"advance_threat","params":{"threat_id":"threat_corbitt_awareness","amount":20}},{"op":"mark_flag","params":{"key":"corbitt_alert","value":true}}]}
+    }
+  ],
+  "threats": [
+    {
+      "id":"threat_corbitt_awareness","name":"科比特的警觉","progress":10,"crossed":[],
+      "thresholds":[
+        {"at":35,"label":"宅邸不安","narrative":"你偶尔感觉到老宅正在倾听。","effects":[{"op":"mark_flag","params":{"key":"house_uneasy","value":true}}]},
+        {"at":65,"label":"主动驱逐","narrative":"宅内的响动开始有意把你引向错误方向。","effects":[{"op":"mark_flag","params":{"key":"corbitt_hostile","value":true}}]},
+        {"at":90,"label":"杀意显现","narrative":"墙内传来急促抓挠，仿佛有什么东西不再愿意等待。","effects":[{"op":"set_entity_active","params":{"entity_id":"creature_corbitt","active":true}}]}
+      ]
+    }
+  ],
+  "clues": [
+    {"id":"clue_macario_tragedy","fact_id":"f_macario_tragedy","title":"上一户租客","description":"马卡里奥一家在宅中精神崩溃，此后房屋空置。","critical":false,"sources":["npc_knott"]},
+    {"id":"clue_house_history","fact_id":"f_house_violent_history","title":"反复发生的惨剧","description":"不同年代的住户都遭遇疾病、暴力事故或自杀。","critical":true,"sources":["loc_globe","director_hint"]},
+    {"id":"clue_corbitt_purchase","fact_id":"f_corbitt_purchase","title":"沃尔特·科比特","description":"科比特在 1835 年取得房屋，此后长期居住。","critical":false,"sources":["loc_library"]},
+    {"id":"clue_corbitt_lawsuit","fact_id":"f_corbitt_lawsuit","title":"邻居的诉讼","description":"邻居曾试图以危险怪异行为为由赶走科比特。","critical":false,"sources":["loc_library"]},
+    {"id":"clue_basement_burial","fact_id":"f_basement_burial","title":"地下室安葬条款","description":"科比特的遗嘱要求遗体留在自家地下室。","critical":true,"sources":["loc_library"]},
+    {"id":"clue_chapel_link","fact_id":"f_chapel_link","title":"遗嘱执行人与教堂","description":"静观教堂牧师执行了科比特的遗嘱。","critical":true,"sources":["loc_records"]},
+    {"id":"clue_chapel_raid","fact_id":"f_chapel_raid","title":"被掩盖的教堂突袭","description":"警方曾与教堂成员交火，案卷随后遭到异常干预。","critical":false,"sources":["loc_police"]},
+    {"id":"clue_sanitarium","fact_id":"f_macario_sanitarium","title":"幸存者所在","description":"马卡里奥夫妇目前住在罗克斯伯里疗养院。","critical":false,"sources":["loc_neighborhood"]},
+    {"id":"clue_gabriela","fact_id":"f_gabriela_testimony","title":"加布里埃拉的证词","description":"她见过床边的邪恶存在和自行飞动的物件。","critical":true,"sources":["npc_gabriela"]},
+    {"id":"clue_own_weapon","fact_id":"f_own_weapon","title":"以其武器反制","description":"维托里奥的只言片语暗示敌人的武器也是它的弱点。","critical":true,"sources":["npc_vittorio"]},
+    {"id":"clue_chapel_journal","fact_id":"f_chapel_journal","title":"教堂活动日志","description":"残存日志明确记录科比特被葬在宅邸地下。","critical":true,"sources":["loc_chapel"]},
+    {"id":"clue_corbitt_diaries","fact_id":"f_corbitt_diaries","title":"三卷仪式日记","description":"宅内日记证明科比特长期研究召唤与控制。","critical":false,"sources":["loc_house_ground"]},
+    {"id":"clue_bed_attack","fact_id":"f_bed_attack","title":"被操控的床","description":"空卧室并非源头，而是宅中意志制造的杀人陷阱。","critical":false,"sources":["loc_spare_bedroom"]},
+    {"id":"clue_hidden_wall","fact_id":"f_hidden_wall","title":"地下室夹墙","description":"木板后方有一片足以藏下墓室的空间。","critical":true,"sources":["loc_house_basement"]},
+    {"id":"clue_magic_dagger","fact_id":"f_magic_dagger","title":"浮空匕首","description":"一把锈匕首会自行攻击，并受墙后存在驱使。","critical":true,"sources":["loc_house_basement"]},
+    {"id":"clue_corbitt_undead","fact_id":"f_corbitt_undead","title":"地下室的旧主人","description":"科比特并未真正死亡；意识和肉身仍盘踞墓室。","critical":true,"sources":["loc_hidden_lair"]}
+  ],
+  "actions": [
+    {
+      "id":"cafe_question_knott","label":"追问诺特关于上一户租客","type":"TALK","location":"loc_cafe","target":"npc_knott","duration_minutes":8,"skill":null,"difficulty":"regular","aliases":["问诺特","询问房东","了解马卡里奥一家"],"dialogue_text":"“诺特先生，在我接下钥匙之前，请把上一户租客身上发生的事原原本本告诉我。”","requirements":[],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_macario_tragedy"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"诺特承认，马卡里奥夫妇先后精神崩溃，两个孩子也被亲属接走。他不是要你粉饰太平，只希望得到一个能解释这一切的答案。","failure_text":"诺特只重复委托书上的内容。",
+      "success_beats":["诺特把咖啡杯推到一旁，指腹在钥匙齿上来回摩挲。那不是房东谈论普通租务纠纷时会有的神情。","“马卡里奥先生先是在门厅摔伤，后来开始说墙里有人叫他的名字。几个月后，他拿刀追着自己的妻子，嘴里却一直喊着让她快逃。”","“马卡里奥太太也没能撑住。两个孩子被亲属接走，夫妇二人如今都在罗克斯伯里疗养院——这就是我先前没有写进委托书的部分。”","诺特把钥匙推到你面前。 “我不是要你替我证明房子安全。我只想知道那里究竟发生了什么，以及还有没有人能进去住。”"],
+      "failure_beats":["诺特将委托书重新转向你，像是那几行打字能够代替他的回答。","“需要调查的内容都写在这里：确认房屋状况，说明是否适合再次出租。上一户租客的私事与委托无关。”","他说完便端起已经冷掉的咖啡，不再碰桌上的钥匙。"],"interrupted_text":"来电打断了你们的谈话。","once":true,"suggest":true,"risk":"safe","category":"social"
+    },
+    {
+      "id":"cafe_review_case_note","label":"重新整理诺特留下的公开线索","type":"SEARCH","location":"loc_cafe","target":"npc_knott","duration_minutes":12,"skill":null,"difficulty":"regular","aliases":["重读笔记","整理案件","查看地址记录"],
+      "requirements":[{"subject":"flag:director_case_note","predicate":"value","operator":"eq","value":true}],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_house_violent_history"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_house_violent_history"}},{"op":"mark_flag","params":{"key":"director_case_note","value":false}}],"failure_effects":[],"always_effects":[],
+      "success_text":"你把住户姓名与门牌号并排整理，发现它们足以在公开索引中串起多起旧事故。这不是单次家庭悲剧，而是跨越数十年的重复模式。","failure_text":"笔记里没有新的可用信息。","interrupted_text":"一通电话打断了整理。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"cafe_report_success","label":"向诺特提交最终调查报告","type":"TALK","location":"loc_cafe","target":"npc_knott","duration_minutes":15,"skill":null,"difficulty":"regular","aliases":["结案","报告真相","告诉诺特解决了"],"dialogue_text":"“诺特先生，调查结束了。我会把那栋房子里发生的一切，从头告诉你。”",
+      "requirements":[{"subject":"flag:corbitt_destroyed","predicate":"value","operator":"eq","value":true}],"forbidden":[],
+      "success_effects":[{"op":"mark_flag","params":{"key":"case_closed","value":true,"visible":true}}],"failure_effects":[],"always_effects":[],
+      "success_text":"诺特听完报告，久久望着那串已经无用的钥匙。无论法院是否相信全部细节，那栋房子的地下威胁已经结束。","failure_text":"你还无法提交结案报告。",
+      "success_beats":["你的报告结束后，诺特久久没有触碰桌上的钥匙。窗外马车驶过积水，玻璃上的倒影让他看上去忽然老了许多。","“科比特……一直都在那下面。”他把这个名字重复了一遍，仿佛终于能把多年事故归到一个可以憎恨的对象上。","“法院不会相信尸体、仪式和一把会自己飞起来的匕首。但我相信你。那栋房子不会再出租，也不会再让任何家庭走进去。”","他用手帕包起钥匙。 “这不是一份能公开的报告，但它是一个答案。谢谢你把它带回来。”"],
+      "failure_beats":["诺特听完你目前掌握的内容，缓慢摇了摇头。","“这还不是结论。事故、传闻和旧报纸可以说明那栋房子危险，却不能说明危险已经结束。”","“等你能告诉我地下室里究竟有什么，再来交这份报告。”"],"interrupted_text":"谈话被打断。","once":true,"suggest":true,"risk":"safe","category":"social"
+    },
+    {
+      "id":"cafe_false_report","label":"告诉诺特房子没有问题","type":"TALK","location":"loc_cafe","target":"npc_knott","duration_minutes":10,"skill":null,"difficulty":"regular","aliases":["房子安全","没有鬼","结束委托"],"dialogue_text":"“诺特先生，我检查过了。那栋房子没有你担心的问题。”",
+      "requirements":[],"forbidden":[{"subject":"flag:corbitt_destroyed","predicate":"value","operator":"eq","value":true}],
+      "success_effects":[{"op":"mark_flag","params":{"key":"false_report","value":true,"visible":true}}],"failure_effects":[],"always_effects":[],
+      "success_text":"诺特接受了你的判断，并决定今晚亲自去宅中确认。你把钥匙交还给他时，金属冷得像刚从土里挖出。","failure_text":"诺特没有接受你的说法。",
+      "success_beats":["诺特注视你片刻，像是在判断这份轻描淡写的结论究竟值多少钱。最后，他伸手接过钥匙。","“没有结构问题，也没有你能确认的危险——很好。我今晚会亲自过去看看，免得下一位租客又被传闻吓跑。”","钥匙落进他掌心时，他明显缩了一下手，却很快用笑容掩饰过去。 “大概只是金属太冷了。”"],
+      "failure_beats":["诺特没有伸手接钥匙，只把你的报告推回桌面。","“你说房子没有问题，可你的结论里没有一项能解释上一户租客的遭遇。请先把真正的问题查清楚。”"],"interrupted_text":"谈话被打断。","once":true,"suggest":false,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"globe_persuade_arty","label":"说服阿蒂开放旧剪报库","type":"TALK","location":"loc_globe","target":"npc_arty","duration_minutes":20,"skill":"charm","difficulty":"regular","aliases":["说服编辑","查旧报纸","进入剪报库","找房屋新闻"],"dialogue_text":"“阿蒂，我只占用你二十分钟。让我看看那栋宅子的旧剪报，或许这会成为一条值得署你名字的新闻。”","requirements":[],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_house_violent_history"}}],"failure_effects":[{"op":"modify_player","params":{"field":"stress","delta":1}}],"always_effects":[],
+      "success_text":"阿蒂终于让开通往地下资料室的门。按门牌归档的未刊稿件显示，这栋房子让不同年代的住户重复遭遇疾病、残疾、暴力死亡和精神崩溃。","failure_text":"阿蒂享受着拒绝你的权力。他让你离开柜台，但没有禁止你换一种说法再试。",
+      "success_beats":["阿蒂靠在柜台上审视你，脸上的不耐烦逐渐变成了编辑嗅到故事时的兴趣。","“二十分钟，而且你不能带走原件。要是真有东西，把第一份可以印刷的摘要留给《环球报》。”","他掏出一串钥匙，领你穿过排字机的轰鸣。 “地下剪报库按街区和门牌归档。那栋房子的文件夹很厚——厚得不像一栋普通住宅。”","旧稿件摊开后，同一地址在不同年代反复伴随疾病、残疾、暴力死亡与精神崩溃。阿蒂低声骂了一句： “这不是一则事故新闻，这是几十年没有人串起来的一整条线。”"],
+      "failure_beats":["阿蒂听完后露出一个并不友善的笑，把访客登记簿推到你面前。","“每个走进报社的人都说自己手里有大新闻。剪报库不是给侦探碰运气的地方。”","他朝门口抬了抬下巴。 “带着更具体的日期、姓名或者一张正式许可回来，到时候我也许会改主意。”"],"interrupted_text":"报社的紧急消息中断了交涉。","once":true,"suggest":true,"risk":"uncertain","category":"social"
+    },
+    {
+      "id":"library_research_owner","label":"查阅宅邸最早的产权记录","type":"SEARCH","location":"loc_library","target":"loc_library","duration_minutes":60,"skill":"research","difficulty":"regular","aliases":["查产权","查科比特","研究房屋历史"],"requirements":[],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_corbitt_purchase"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_corbitt_purchase"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"旧地产目录显示，房子刚建成不久便转卖给沃尔特·科比特。他此后在这里住了数十年。","failure_text":"目录索引相互矛盾，这一小时没有得到可靠结果。","interrupted_text":"闭馆广播打断了检索。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"library_research_lawsuit","label":"追查科比特与邻居的诉讼","type":"SEARCH","location":"loc_library","target":"loc_library","duration_minutes":60,"skill":"research","difficulty":"regular","aliases":["查诉讼","查邻居控告","继续查科比特"],
+      "requirements":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_corbitt_purchase"}],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_corbitt_lawsuit"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_corbitt_lawsuit"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"一份旧案摘要记载，邻居曾集体要求科比特迁离，理由是他的行为令人不安且可能危及社区；他最终仍留在原宅。","failure_text":"你翻遍了错误年份的卷宗，只能下次再缩小范围。","interrupted_text":"馆员收走了尚未登记的卷宗。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"library_research_obituary","label":"查找科比特的讣告与遗嘱争议","type":"SEARCH","location":"loc_library","target":"loc_library","duration_minutes":60,"skill":"research","difficulty":"regular","aliases":["查讣告","查遗嘱","科比特埋在哪里"],
+      "requirements":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_corbitt_lawsuit"}],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_basement_burial"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_basement_burial"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"讣告旁的法律简讯记录了第二场争议：科比特坚持死后也要留在宅邸地下室。记录没有写明法院最后是否阻止了安葬。","failure_text":"这一批讣告缺页严重，你暂时没找到结果。","interrupted_text":"闭馆钟响，阅览被迫停止。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"records_trace_executor","label":"查阅科比特遗嘱的执行记录","type":"SEARCH","location":"loc_records","target":"loc_records","duration_minutes":45,"skill":"research","difficulty":"regular","aliases":["查遗嘱执行人","查教堂登记","市政档案"],"requirements":[],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_chapel_link"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_chapel_link"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"遗嘱执行人是静观教堂的迈克尔·托马斯牧师。教会登记显示，这座教堂在 1912 年突然关闭。","failure_text":"档案员给了你错误的索引册，时间白白流走。","interrupted_text":"档案员要求立即归还卷宗。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"police_gain_access","label":"争取查看静观教堂突袭案卷","type":"TALK","location":"loc_police","target":"loc_police","duration_minutes":35,"skill":"law","difficulty":"hard","aliases":["查警方记录","查教堂突袭","说服警察"],"dialogue_text":"“我正在调查一处与静观教堂有关的住宅。请让我看看当年突袭行动的案卷，这可能关系到新的伤亡。”",
+      "requirements":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_chapel_link"}],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_chapel_raid"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_chapel_raid"}}],"failure_effects":[{"op":"modify_player","params":{"field":"stress","delta":1}}],"always_effects":[],
+      "success_text":"你获准看了几页未公开案卷：警方曾突袭静观教堂，双方死伤惨重；其后大量嫌疑人被释放，关键验尸与审判记录也遭到异常删改。","failure_text":"值班员拒绝开放旧案，还记下了你的姓名。你可以补充依据后再试。",
+      "success_beats":["值班警官逐页检查你的依据，最后把登记簿合上，示意你跟他穿过一道只对内部人员开放的铁门。","“你只能在这里看，不能抄走姓名。那次突袭死了不少人——教徒和警察都有。可第二天，上面就有人要求我们少谈细节。”","发黄的案卷记录了大量嫌疑人被迅速释放，关键验尸页与审判附件则被整齐割走。警官敲了敲断裂的页码。 “这不是保管疏忽，是有人回来清理过。”","“如果你调查的房子真和这座教堂有关，就别一个人进去。”他压低声音，“当年活着出来的人，没有一个愿意再说自己在地下看见了什么。”"],
+      "failure_beats":["值班员听完陈述，拿起钢笔在访客簿上记下你的姓名，却没有去碰身后的档案柜钥匙。","“静观教堂案卷属于封存材料。没有法院许可、具体案号或者在职警官担保，我不能让你查看。”","“你可以补齐依据再来。”他把登记簿转回自己面前，“但别试图从其他值班员那里套到不同答案。”"],"interrupted_text":"警署临时清场，查阅被打断。","once":true,"suggest":true,"risk":"uncertain","category":"social"
+    },
+    {
+      "id":"neighborhood_talk_dooley","label":"向杜利打听宅邸和前租客","type":"TALK","location":"loc_neighborhood","target":"npc_dooley","duration_minutes":18,"skill":"charm","difficulty":"regular","aliases":["问报摊老板","打听邻居","马卡里奥去哪了"],"dialogue_text":"“杜利先生，你在这里见过的人比警察档案里写的多。马卡里奥一家离开前，到底发生了什么？”","requirements":[],"forbidden":[],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_macario_sanitarium"}},{"op":"reveal_fact","params":{"fact_id":"f_macario_tragedy"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"杜利记得男主人先出事故、后陷入狂乱，女主人也在不久前崩溃。两人如今都在罗克斯伯里疗养院，孩子则被亲属接走。","failure_text":"杜利只肯谈天气和报纸销量。换个态度也许能让他开口。",
+      "success_beats":["杜利把报纸卷成筒，在掌心轻轻拍了两下。他先看向街角那栋宅子的方向，才决定继续说下去。","“马卡里奥先生搬进去没多久，就在门厅出了事故。后来他越来越不对劲，常在半夜跑到街上，说屋里有人想让他伤害自己的家人。”","“最后一次见到他时，他已经被两名警察按在救护车里。没过多久，马卡里奥太太也崩溃了，孩子被亲属接走。”","杜利压低报纸。 “夫妇俩都在罗克斯伯里疗养院。你若真要进那栋房子，最好先去听听他们怎么说——前提是他们还肯谈。”"],
+      "failure_beats":["杜利瞥了一眼街边的熟客，立刻换上谈生意的笑容。","“今天天气适合看晚报，不适合翻别人家的旧账。马卡里奥一家已经搬走，我知道的就这么多。”","他抽出一份报纸挡在你们之间。 “要买一份吗？不买的话，后面还有客人。”"],"interrupted_text":"一群顾客围住报摊，谈话被冲散。","once":true,"suggest":true,"risk":"safe","category":"social"
+    },
+    {
+      "id":"sanitarium_talk_gabriela","label":"询问加布里埃拉在宅中的经历","type":"TALK","location":"loc_sanitarium","target":"npc_gabriela","duration_minutes":20,"skill":"charm","difficulty":"regular","aliases":["问女租客","和加布里埃拉谈","邪恶存在"],"dialogue_text":"“加布里埃拉，我相信你经历的事是真的。请告诉我，那栋房子在夜里对你做了什么。”","requirements":[],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_gabriela_testimony"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_gabriela_testimony"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"加布里埃拉说，夜里有东西俯身看着她，发怒时能让餐具和家具自行飞动。她相信那股恶意一直更关注她的丈夫。","failure_text":"问题让她过度惊恐，护士要求你先让她休息。",
+      "success_beats":["加布里埃拉把毯子拉到胸前，视线停在你身后的空墙上。过了很久，她才确认那里没有别的人。","“它会在夜里俯身看我。我看不清脸，只知道它离得很近，近到我能闻见泥土和旧布的气味。”","“有一次我叫醒维托里奥，房间里的碟子和椅子全都飞了起来。不是风，也不是地震——它在发怒，因为他想带我们离开。”","她抓住毯边，声音低下去。 “它真正想要的是我丈夫。它一直在他耳边说话，让他相信伤害我们才是在保护我们。”"],
+      "failure_beats":["加布里埃拉的呼吸突然变得急促。她盯着房间上方的角落，仿佛某个只有她能看见的东西正从那里俯视下来。","“不要问了。它会知道我说过什么——它总会知道。”","护士立刻走近，把你隔到一旁。加布里埃拉仍在毯子下面重复： “把门关上，把门关上……”"],"interrupted_text":"护士终止了会面。","once":true,"suggest":true,"risk":"safe","category":"social"
+    },
+    {
+      "id":"sanitarium_listen_vittorio","label":"听维托里奥反复念叨的话","type":"TALK","location":"loc_sanitarium","target":"npc_vittorio","duration_minutes":12,"skill":"observation","difficulty":"regular","aliases":["问男租客","听维托里奥说什么","自己的武器"],"dialogue_text":"“维托里奥，我会听完。你不用说得完整——只要告诉我，那东西最害怕什么。”","requirements":[],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_own_weapon"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_own_weapon"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"维托里奥紧抱圣经，反复拼出一个并不存在的句子。你剥开混乱语序后，只剩一个清晰警告：让恶物败在它自己的武器之下。","failure_text":"他的言语支离破碎，你没能从中分离出可靠意思。",
+      "success_beats":["维托里奥起初没有看你，只把一本磨破的圣经紧紧压在胸前。他的嘴里不断交换着同几个词的位置，像是在拼一把看不见的锁。","“不是你的手……是它的手。不是你的刀……是它的刀。”","你让他慢下来，他便用指甲在封皮上划出一条又一条痕迹。 “墙后面的死人会让铁飞起来。别躲那把刀，让它回去。”","他终于抬起布满血丝的眼睛。 “让恶物败在它自己的武器之下。只有这样，它才会真正躺回去。”"],
+      "failure_beats":["维托里奥把圣经抱得更紧，破碎的词句在牙关后相互碰撞，却始终无法组成完整意思。","“它的……不是……手在墙里，刀在睡，睡的人没有……”","当你试图追问，他忽然闭紧嘴巴，把脸埋进书页。会面只剩下纸张被急促呼吸吹动的声音。"],"interrupted_text":"维托里奥突然沉默，会面只能结束。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"chapel_search_cellar","label":"仔细搜索教堂废墟下方","type":"SEARCH","location":"loc_chapel","target":"loc_chapel","duration_minutes":35,"skill":"observation","difficulty":"regular","aliases":["搜教堂","检查废墟","找活动日志"],"requirements":[],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_chapel_journal"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_chapel_journal"}}],"failure_effects":[{"op":"modify_player","params":{"field":"hp","delta":-2}}],"always_effects":[],
+      "sanity_check":{"success_loss":"0","failure_loss":"1","reason":"在教堂废墟中看见不祥的眼形符号","on":"failure","once":true},
+      "success_text":"腐朽地板下藏着烧剩的教会日志。仍可辨认的一页确认，科比特的遗体依照本人和教会的意愿安置在宅邸地下。","failure_text":"腐朽地板突然塌陷，你摔进浅坑。没有找到记录，只带走擦伤和那枚令人头痛的眼形符号。","interrupted_text":"脚下坍塌迫使你中断搜索。","once":true,"suggest":true,"risk":"uncertain","category":"investigate"
+    },
+    {
+      "id":"chapel_take_liber","label":"带走废墟里的虫蛀秘典","type":"TAKE","location":"loc_chapel","target":"item_liber_ivonis","duration_minutes":4,"skill":null,"difficulty":"regular","aliases":["拿走书","拿拉丁文书","秘典"],"requirements":[],"forbidden":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_liber_ivonis"}],
+      "success_effects":[{"op":"add_inventory","params":{"item_id":"item_liber_ivonis"}}],"failure_effects":[],"always_effects":[],
+      "sanity_check":{"success_loss":"0","failure_loss":"1d3","reason":"触碰带有异样气息的虫蛀秘典","on":"success","once":true},
+      "success_text":"你把虫蛀的拉丁文书卷好收起。仅仅翻动封面，就让人产生正在被某种遥远目光注视的错觉。","failure_text":"书页在手中继续剥落。","interrupted_text":"落石迫使你松手。","once":true,"suggest":false,"risk":"uncertain","category":"risk"
+    },
+    {
+      "id":"exterior_examine_house","label":"观察宅邸门窗与后院","type":"EXAMINE","location":"loc_house_exterior","target":"loc_house_exterior","duration_minutes":8,"skill":"observation","difficulty":"regular","aliases":["观察房子","检查窗户","绕到后院"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"advance_threat","params":{"threat_id":"threat_corbitt_awareness","amount":5}}],"failure_effects":[],"always_effects":[],
+      "success_text":"所有一层窗户都从内侧钉死，后院藤架半塌。屋里没有正常活动迹象，但二层帘布似乎在你转头前动了一下。","failure_text":"高楼阴影让你无法看清室内。","interrupted_text":"街上的巨响打断了观察。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"ground_search_storage","label":"撬开一层储藏室的封板柜","type":"FORCE","location":"loc_house_ground","target":"item_corbitt_diaries","duration_minutes":18,"skill":"force","difficulty":"regular","aliases":["搜储藏室","撬柜子","找日记"],"requirements":[],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_corbitt_diaries"}],
+      "success_effects":[{"op":"add_inventory","params":{"item_id":"item_corbitt_diaries"}},{"op":"reveal_fact","params":{"fact_id":"f_corbitt_diaries"}},{"op":"advance_threat","params":{"threat_id":"threat_corbitt_awareness","amount":10}}],"failure_effects":[{"op":"modify_player","params":{"field":"hp","delta":-1}}],"always_effects":[],
+      "success_text":"封板后藏着三卷写满仪式记录的日记。科比特把召唤、支配与宅邸本身混成了一套长期实验。楼上传来一下沉重撞击。","failure_text":"木板反弹割伤了手，柜门仍卡在原处。","interrupted_text":"楼上的撞击让你停下手。","once":true,"suggest":true,"risk":"uncertain","category":"investigate"
+    },
+    {
+      "id":"ground_restore_power","label":"检查厨房保险盒并恢复地下室照明","type":"USE","location":"loc_house_ground","target":"loc_house_basement","duration_minutes":8,"skill":"observation","difficulty":"regular","aliases":["开地下室灯","检查电闸","恢复电力"],"requirements":[],"forbidden":[{"subject":"flag:basement_power","predicate":"value","operator":"eq","value":true}],
+      "success_effects":[{"op":"mark_flag","params":{"key":"basement_power","value":true,"visible":true}}],"failure_effects":[],"always_effects":[],
+      "success_text":"保险盒并未损坏，只是有人把地下室回路关掉。灯泡亮起，但片刻后又轻轻闪了一次。","failure_text":"老旧线路拒绝工作。","interrupted_text":"屋内震动让保险盒再次跳闸。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"ground_descend_basement","label":"沿危险楼梯下到地下室","type":"MOVE","location":"loc_house_ground","target":"loc_house_basement","duration_minutes":5,"skill":"agility","difficulty":"regular","aliases":["下地下室","走地下楼梯","去地窖"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"move_entity","params":{"entity_id":"player","destination":"loc_house_basement"}},{"op":"advance_threat","params":{"threat_id":"threat_corbitt_awareness","amount":10}}],"failure_effects":[{"op":"modify_player","params":{"field":"hp","delta":-2}}],"always_effects":[],
+      "success_text":"你试过每一级松动木板，安全抵达地下室。墙后的抓挠声随即停止。","failure_text":"一块踏板突然翻动，你重重撞在扶手上，只能先退回一层。","interrupted_text":"突发震动迫使你退回楼梯口。","once":false,"suggest":true,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"upper_search_family_rooms","label":"检查夫妻卧室与儿童房","type":"SEARCH","location":"loc_house_upper","target":"loc_house_upper","duration_minutes":15,"skill":"observation","difficulty":"regular","aliases":["搜二楼","检查卧室","看儿童房"],"requirements":[],"forbidden":[],
+      "success_effects":[],"failure_effects":[],"always_effects":[],
+      "sanity_check":{"success_loss":"0","failure_loss":"1","reason":"看懂前租客留下的恐怖儿童画","on":"success","once":true},
+      "success_text":"大量十字架、蜡烛与念珠说明前租客曾竭力抵抗什么。儿童画被留在抽屉里，画面上每扇窗后都有同一双眼睛。","failure_text":"房间里只有仓促离开后的生活用品。","interrupted_text":"空卧室传来的撞击打断了搜索。","once":true,"suggest":true,"risk":"safe","category":"investigate"
+    },
+    {
+      "id":"spare_trigger_bed","label":"检查空卧室发响的窗户","type":"EXAMINE","location":"loc_spare_bedroom","target":"loc_spare_bedroom","duration_minutes":4,"skill":"observation","difficulty":"regular","aliases":["检查窗户","看空卧室","调查响声","检查床"],"requirements":[],"forbidden":[{"subject":"flag:bed_attack_seen","predicate":"value","operator":"eq","value":true}],
+      "success_effects":[],"failure_effects":[{"op":"modify_player","params":{"field":"hp","delta":-5}}],
+      "always_effects":[{"op":"reveal_fact","params":{"fact_id":"f_bed_attack"}},{"op":"mark_flag","params":{"key":"bed_attack_seen","value":true,"visible":true}},{"op":"advance_threat","params":{"threat_id":"threat_corbitt_awareness","amount":15}}],
+      "sanity_check":{"success_loss":"0","failure_loss":"1d4","reason":"目睹床架自行转向并发动杀人袭击","on":"always","once":true},
+      "success_text":"窗框一响，你先看见床架在地板上转向。它猛撞过来时你已经闪到门边。这里的灵异不是源头，而是一场精确的杀人陷阱。","failure_text":"你刚靠近窗户，整张床便横冲过来，把你撞向碎裂的玻璃。你挣扎着留在室内，却已鲜血淋漓。","interrupted_text":"更深处的巨响抢先打断了这场诱捕。","once":false,"complete_on_attempt":true,"suggest":true,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"basement_search_knife","label":"在散乱工具中搜索异常物件","type":"SEARCH","location":"loc_house_basement","target":"item_magic_dagger","duration_minutes":15,"skill":"observation","difficulty":"hard","aliases":["找匕首","搜地下室","检查工具堆"],"requirements":[],"forbidden":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_magic_dagger"}],
+      "success_effects":[{"op":"add_inventory","params":{"item_id":"item_magic_dagger"}},{"op":"reveal_fact","params":{"fact_id":"f_magic_dagger"}}],"failure_effects":[{"op":"damage_player","params":{"amount":"1d3"},"conditions":[{"subject":"player","predicate":"inventory","operator":"not_contains","value":"item_trash_lid"}]},{"op":"damage_player","params":{"amount":"1"},"conditions":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_trash_lid"}]}],"always_effects":[],
+      "modifiers":[{"dice":1,"label":"金属桶盖掩护","conditions":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_trash_lid"}]}],
+      "sanity_check":{"success_loss":"0","failure_loss":"1d3","reason":"看见匕首违反重力自行袭击","on":"always","once":true},
+      "success_text":"锈匕首从工具堆中自行抬起。你用外套裹住刀身，才勉强压住它持续挣脱的力量；墙后有什么东西正在控制它。","failure_text":"手伸进杂物深处时，隐藏的刀刃突然划过掌心。你只看见一抹不合常理的移动锈光。","interrupted_text":"墙后骤响让你放弃搜索。","once":true,"suggest":true,"risk":"dangerous","category":"investigate"
+    },
+    {
+      "id":"basement_take_lid","label":"拿起金属桶盖防身","type":"TAKE","location":"loc_house_basement","target":"item_trash_lid","duration_minutes":1,"skill":null,"difficulty":"regular","aliases":["拿桶盖","找盾牌","用盖子防身"],"requirements":[],"forbidden":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_trash_lid"}],
+      "success_effects":[{"op":"add_inventory","params":{"item_id":"item_trash_lid"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"你拿起一个尚算结实的金属桶盖。它挡不住所有危险，至少能隔开突然飞来的刀锋。","failure_text":"桶盖已经锈穿。","interrupted_text":"突发响动让你放下桶盖。","once":true,"suggest":false,"risk":"safe","category":"other"
+    },
+    {
+      "id":"basement_find_wall","label":"敲查地下室四周的木板墙","type":"EXAMINE","location":"loc_house_basement","target":"loc_hidden_lair","duration_minutes":8,"skill":null,"difficulty":"regular","aliases":["检查墙","找夹墙","敲木板"],"requirements":[],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_hidden_wall"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_hidden_wall"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"木板后的回声并不一致。最大的一片空腔足以藏下一间房，缝隙里还带着泥土与腐甜气味。","failure_text":"木板回声混在管道声中。","interrupted_text":"墙后抓挠打断了检查。","once":true,"suggest":true,"risk":"uncertain","category":"investigate"
+    },
+    {
+      "id":"basement_break_wall","label":"拆开通往夹墙的木板","type":"FORCE","location":"loc_house_basement","target":"loc_hidden_lair","duration_minutes":10,"skill":"force","difficulty":"regular","aliases":["破墙","拆木板","进入隐藏房间"],
+      "requirements":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_hidden_wall"}],"forbidden":[],
+      "success_effects":[{"op":"move_entity","params":{"entity_id":"player","destination":"loc_hidden_lair"}},{"op":"set_entity_active","params":{"entity_id":"creature_corbitt","active":true}},{"op":"mark_flag","params":{"key":"corbitt_encountered","value":true,"visible":true}},{"op":"advance_threat","params":{"threat_id":"threat_corbitt_awareness","amount":20}}],"failure_effects":[{"op":"modify_player","params":{"field":"hp","delta":-1}}],"always_effects":[],
+      "success_text":"木板断裂，老鼠从夹层四散逃开。你挤过第二道墙，来到一间泥土地墓室；中央那具高瘦尸体的眼睛已经睁开。","failure_text":"腐木和钉子一起坠落，你被迫后退。墙还没有完全打开。","interrupted_text":"匕首的袭击迫使你放弃拆墙。","once":false,"suggest":true,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"basement_return_ground","label":"返回宅邸一层","type":"MOVE","location":"loc_house_basement","target":"loc_house_ground","duration_minutes":4,"skill":null,"difficulty":"regular","aliases":["回一楼","离开地下室","上楼"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"move_entity","params":{"entity_id":"player","destination":"loc_house_ground"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"你沿松动楼梯回到一层，地下室的腐甜气味仍跟在身后。","failure_text":"楼梯暂时无法通行。","interrupted_text":"墙内巨响让你停在原地。","once":false,"suggest":true,"risk":"safe","category":"move"
+    },
+    {
+      "id":"lair_examine_corbitt","label":"确认泥地中央尸体的身份","type":"EXAMINE","location":"loc_hidden_lair","target":"creature_corbitt","duration_minutes":2,"skill":"observation","difficulty":"regular","aliases":["检查尸体","看科比特","确认怪物"],"requirements":[],"forbidden":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_corbitt_undead"}],
+      "success_effects":[{"op":"reveal_fact","params":{"fact_id":"f_corbitt_undead"}}],"failure_effects":[],"always_effects":[],
+      "sanity_check":{"success_loss":"1","failure_loss":"1d8","reason":"确认沃尔特·科比特的干尸仍有意识","on":"always","once":true},
+      "success_text":"干枯躯体胸腔没有呼吸，眼睛却追着你的动作。它就是沃尔特·科比特——死亡没有让他离开这栋房子。","failure_text":"尸体骤然扭头，完整理解眼前事实之前，纯粹恐惧已经攫住你。","interrupted_text":"尸体先一步起身。","once":true,"suggest":true,"risk":"dangerous","category":"investigate"
+    },
+    {
+      "id":"lair_use_dagger","label":"用仪式匕首刺向科比特","type":"CONFRONT","location":"loc_hidden_lair","target":"creature_corbitt","duration_minutes":2,"skill":"fight","difficulty":"regular","aliases":["用匕首杀科比特","刺怪物","用它自己的武器"],
+      "requirements":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_magic_dagger"}],"forbidden":[{"subject":"flag:corbitt_destroyed","predicate":"value","operator":"eq","value":true}],
+      "opposed":{"entity_id":"creature_corbitt","skill":"fighting","label":"科比特反击","response":"fight_back","tie_favors":"initiator","both_fail_no_winner":true},
+      "modifiers":[{"dice":1,"label":"桶盖格挡","conditions":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_trash_lid"}]}],
+      "success_effects":[{"op":"mark_flag","params":{"key":"corbitt_destroyed","value":true,"visible":true}},{"op":"set_entity_active","params":{"entity_id":"creature_corbitt","active":false}},{"op":"cancel_event","params":{"event_id":"event_house_stirs","if_present":true}}],
+      "failure_effects":[{"op":"damage_player","params":{"amount":"1d6"},"conditions":[{"subject":"player","predicate":"inventory","operator":"not_contains","value":"item_trash_lid"}]},{"op":"damage_player","params":{"amount":"1d3"},"conditions":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_trash_lid"}]}],"always_effects":[],
+      "success_text":"匕首像认出了真正的主人，突然不再抗拒。刀尖刺入干硬胸骨的一刻，科比特的身体从伤口向外崩成灰烬，宅中所有撞击声同时停止。","failure_text":"科比特扭转你的手腕，匕首擦身而过。他的指爪在你身上留下深口，下一击已经逼近。","interrupted_text":"科比特的意志抢先夺走了匕首。","once":true,"suggest":true,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"lair_attack_direct","label":"不用匕首正面攻击科比特","type":"CONFRONT","location":"loc_hidden_lair","target":"creature_corbitt","duration_minutes":2,"skill":"fight","difficulty":"hard","aliases":["打科比特","直接攻击怪物","徒手战斗"],
+      "requirements":[],"forbidden":[{"subject":"flag:corbitt_destroyed","predicate":"value","operator":"eq","value":true},{"subject":"flag:corbitt_weakened","predicate":"value","operator":"eq","value":true}],
+      "opposed":{"entity_id":"creature_corbitt","skill":"fighting","label":"科比特反击","response":"fight_back","tie_favors":"initiator","both_fail_no_winner":true},
+      "modifiers":[{"dice":1,"label":"桶盖格挡","conditions":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_trash_lid"}]}],
+      "success_effects":[{"op":"mark_flag","params":{"key":"corbitt_weakened","value":true,"visible":true}}],"failure_effects":[{"op":"damage_player","params":{"amount":"1d6"}}],"always_effects":[],
+      "success_text":"你的攻击剥落了科比特体表一层坚硬干肉。他没有倒下，但护住躯体的力量明显出现裂缝。","failure_text":"攻击只削下一片干硬组织。科比特的反击让你付出惨重代价。","interrupted_text":"精神压迫让攻击偏离。","once":true,"suggest":true,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"lair_finish_direct","label":"趁防护破裂彻底摧毁科比特","type":"CONFRONT","location":"loc_hidden_lair","target":"creature_corbitt","duration_minutes":2,"skill":"fight","difficulty":"hard","aliases":["继续攻击","彻底杀死科比特","结束战斗"],
+      "requirements":[{"subject":"flag:corbitt_weakened","predicate":"value","operator":"eq","value":true}],"forbidden":[{"subject":"flag:corbitt_destroyed","predicate":"value","operator":"eq","value":true}],
+      "opposed":{"entity_id":"creature_corbitt","skill":"fighting","label":"科比特垂死反扑","response":"fight_back","tie_favors":"initiator","both_fail_no_winner":true},
+      "modifiers":[{"dice":1,"label":"桶盖格挡","conditions":[{"subject":"player","predicate":"inventory","operator":"contains","value":"item_trash_lid"}]}],
+      "success_effects":[{"op":"mark_flag","params":{"key":"corbitt_destroyed","value":true,"visible":true}},{"op":"set_entity_active","params":{"entity_id":"creature_corbitt","active":false}},{"op":"cancel_event","params":{"event_id":"event_house_stirs","if_present":true}}],
+      "failure_effects":[{"op":"damage_player","params":{"amount":"1d6"}}],"always_effects":[],
+      "success_text":"你击穿最后一层干硬防护。科比特的躯体塌陷成灰，支撑宅邸异象的意志终于断裂。","failure_text":"科比特护住了破损处，并以更凶狠的力量反扑。","interrupted_text":"幻觉让你错过最后机会。","once":true,"suggest":true,"risk":"dangerous","category":"risk"
+    },
+    {
+      "id":"lair_flee","label":"退回地下室","type":"MOVE","location":"loc_hidden_lair","target":"loc_house_basement","duration_minutes":1,"skill":null,"difficulty":"regular","aliases":["逃出墓室","退回去","离开隐藏房间"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"move_entity","params":{"entity_id":"player","destination":"loc_house_basement"}}],"failure_effects":[],"always_effects":[],
+      "success_text":"你挤回夹墙外，暂时与墓室拉开距离。若科比特仍在，低笑会继续穿过木板；若它已毁，身后只剩灰尘落地。","failure_text":"退路暂时受阻。","interrupted_text":"退路被飞来的匕首截断。","once":false,"suggest":true,"risk":"safe","category":"move"
+    },
+    {
+      "id":"street_leave_case","label":"结束调查并离开波士顿","type":"ESCAPE","location":"loc_street","target":"loc_street","duration_minutes":5,"skill":null,"difficulty":"regular","aliases":["离开城市","放弃调查","带证据撤离"],"requirements":[],"forbidden":[],
+      "success_effects":[{"op":"mark_flag","params":{"key":"escaped","value":true,"visible":true}}],"failure_effects":[],"always_effects":[],
+      "success_text":"你没有再回头。现有证据会跟你离开波士顿，而那栋房子里尚未解决的东西也会继续等待。","failure_text":"你没能离开。","interrupted_text":"最后一刻的异响让你停步。","once":true,"suggest":true,"risk":"safe","category":"move"
+    },
+    {
+      "id":"wait_and_listen","label":"停下来观察周围动静","type":"WAIT","location":null,"target":null,"duration_minutes":10,"skill":null,"difficulty":"regular","aliases":["等待","观察四周","听动静"],"requirements":[],"forbidden":[],
+      "success_effects":[],"failure_effects":[],"always_effects":[],
+      "success_text":"你停下来整理呼吸。城市与老宅都没有因此静止，时间仍在推进。","failure_text":"等待没有带来答案。","interrupted_text":"突发事件打断了等待。","once":false,"suggest":false,"risk":"safe","category":"other"
+    }
+  ],
+  "complications": [
+    {
+      "id":"complication_corbitt_attention","label":"科比特察觉调查正在逼近","requirements":[{"subject":"flag:corbitt_destroyed","predicate":"value","operator":"eq","value":false},{"subject":"threat:threat_corbitt_awareness","predicate":"progress","operator":"lte","value":80}],
+      "effects":[{"op":"advance_threat","params":{"threat_id":"threat_corbitt_awareness","amount":10}}],
+      "world_justification":"科比特的意识覆盖整栋宅邸，持续查问住户与教会记录会让他察觉有人正在接近秘密。",
+      "affected_entities":["creature_corbitt","threat_corbitt_awareness"]
+    }
+  ],
+  "respites": [
+    {
+      "id":"respite_gabriela_warning","label":"回想加布里埃拉保持清醒的办法","requirements":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_gabriela_testimony"},{"subject":"player","predicate":"stress","operator":"gte","value":2}],
+      "effects":[{"op":"modify_player","params":{"field":"stress","delta":-2}},{"op":"modify_player","params":{"field":"sanity","delta":1}}],
+      "world_justification":"加布里埃拉描述过如何用固定祷词和触觉确认自己仍在现实中，这段证词可以帮助玩家抵抗宅邸制造的恐惧。",
+      "affected_entities":["player","npc_gabriela"]
+    },
+    {
+      "id":"respite_gabriela_grounding","label":"用加布里埃拉的办法确认现实","requirements":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_gabriela_testimony"},{"subject":"player","predicate":"sanity","operator":"lte","value":55}],
+      "effects":[{"op":"modify_player","params":{"field":"sanity","delta":1}}],
+      "world_justification":"加布里埃拉教过你用固定触感与可验证细节对抗宅邸施加的错觉。",
+      "affected_entities":["player","npc_gabriela"]
+    }
+  ],
+  "endings": [
+    {
+      "id":"death","title":"宅邸的新遗骸","status":"LOST","priority":1,
+      "requirements":[{"subject":"flag:dead","predicate":"value","operator":"eq","value":true}],
+      "narrative":"一次足以致命的重创结束了调查。数日后，诺特只会知道你拿着钥匙走进宅邸，再也没有出来。"
+    },
+    {
+      "id":"permanent_insanity","title":"理智的尽头","status":"LOST","priority":2,
+      "requirements":[{"subject":"flag:permanently_insane","predicate":"value","operator":"eq","value":true}],
+      "narrative":"最后一点能够把经历组织成现实的力量消失了。宅邸仍在原处，而你已经无法再向任何人完整讲述其中发生过什么。"
+    },
+    {
+      "id":"incapacitated","title":"倒在宅邸深处","status":"LOST","priority":3,
+      "requirements":[{"subject":"player","predicate":"hp","operator":"lte","value":0}],
+      "narrative":"伤势夺走了你的行动能力。你仍有一线生机，但在这场单人调查中，已没有人能及时把你带离宅邸。"
+    },
+    {
+      "id":"false_assurance","title":"错误的安全结论","status":"LOST","priority":2,
+      "requirements":[{"subject":"flag:false_report","predicate":"value","operator":"eq","value":true}],
+      "narrative":"当晚，诺特带着你的报告住进宅邸。警方次日在地下室找到他的尸体，而你必须证明那份错误结论不是一场预谋。科比特仍留在墙后。"
+    },
+    {
+      "id":"case_proven","title":"灰烬与完整证据链","status":"WON","priority":10,
+      "requirements":[{"subject":"flag:case_closed","predicate":"value","operator":"eq","value":true},{"subject":"flag:corbitt_destroyed","predicate":"value","operator":"eq","value":true},{"subject":"player","predicate":"clue_count","operator":"gte","value":5}],
+      "narrative":"科比特化成的灰、地下墓室、教会记录与数代住户的遭遇终于连成一条证据链。诺特付清报酬并封锁宅邸；至少这一次，房屋的恶名不再只是无法证实的传闻。"
+    },
+    {
+      "id":"case_survived","title":"没有旁证的胜利","status":"WON","priority":20,
+      "requirements":[{"subject":"flag:case_closed","predicate":"value","operator":"eq","value":true},{"subject":"flag:corbitt_destroyed","predicate":"value","operator":"eq","value":true}],
+      "narrative":"宅邸安静了，科比特也已被摧毁。你的报告缺少足以解释全部历史的旁证，但诺特相信亲眼可见的地下墓室。危险结束了，真相却仍不完整。"
+    },
+    {
+      "id":"escaped_with_evidence","title":"带着证据离开","status":"ESCAPED","priority":30,
+      "requirements":[{"subject":"flag:escaped","predicate":"value","operator":"eq","value":true},{"subject":"player","predicate":"clue_count","operator":"gte","value":5}],
+      "narrative":"你带着足以证明数十年异常的材料离开波士顿，却没有解决地下室的存在。证据可以警告下一个人，但它无法阻止科比特继续等待。"
+    },
+    {
+      "id":"escaped_alive","title":"未完成的委托","status":"ESCAPED","priority":40,
+      "requirements":[{"subject":"flag:escaped","predicate":"value","operator":"eq","value":true}],
+      "narrative":"你活着退出调查。诺特仍握着无法出租的房产，而谢夫街那扇钉死的窗后，有什么东西知道你曾经接近过答案。"
+    }
+  ],
+  "location_graph": {
+    "loc_cafe":{"loc_globe":12,"loc_library":10,"loc_records":14,"loc_police":16,"loc_neighborhood":12,"loc_sanitarium":22,"loc_chapel":18,"loc_house_exterior":15,"loc_street":8},
+    "loc_globe":{"loc_cafe":12},
+    "loc_library":{"loc_cafe":10},
+    "loc_records":{"loc_cafe":14},
+    "loc_police":{"loc_cafe":16},
+    "loc_neighborhood":{"loc_cafe":12,"loc_house_exterior":4},
+    "loc_sanitarium":{"loc_cafe":22},
+    "loc_chapel":{"loc_cafe":18,"loc_house_exterior":14},
+    "loc_house_exterior":{"loc_cafe":15,"loc_neighborhood":4,"loc_chapel":14,"loc_house_ground":2},
+    "loc_house_ground":{"loc_house_exterior":2,"loc_house_upper":2},
+    "loc_house_upper":{"loc_house_ground":2,"loc_spare_bedroom":1},
+    "loc_spare_bedroom":{"loc_house_upper":1},
+    "loc_house_basement":{},
+    "loc_hidden_lair":{},
+    "loc_street":{"loc_cafe":8}
+  }
+}
