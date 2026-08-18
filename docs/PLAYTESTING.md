@@ -9,6 +9,7 @@ python scripts/self_play.py --scenario all
 python scripts/self_play.py --scenario the_haunting_corbitt_house_v1
 python scripts/self_play.py --scenario all --output-dir artifacts/playtests
 python scripts/rules_playtest.py --output-dir artifacts/playtests
+python scripts/benchmark_retrieval.py --iterations 250
 ```
 
 退出码为 0 表示所有强制路线和运行时不变量通过；任何错误都会令脚本返回 1。探索型策略未在回合上限内结束时会产生警告，但不会伪装成通过的终局。
@@ -42,3 +43,9 @@ python scripts/rules_playtest.py --output-dir artifacts/playtests
 ## 规则分支矩阵
 
 `rules_playtest.py` 使用正式引擎执行 7 个确定性案例：接受失败、幸运补点、孤注一掷成功、孤注一掷失败、带奖励骰的对抗战、SAN 检定和重伤。它不是只测数学函数；每个案例都经过真实 `GameEngine` 或 `WorldKernel`，并检查等待选择、时间推进、事件记录和最终副作用。
+
+## 检索评测
+
+`evals/retrieval/the_haunting_v1.json` 固定保存当前《科比特宅邸》的正例、未知问题、错误说话对象、关系错配、Planner 噪声与复合问题。`benchmark_retrieval.py` 对 legacy、纯 BM25、未拆分问题的类型混合和 `typed_hybrid_v2` 做相同输入的消融比较。
+
+报告同时记录 exact set、Top-1、Macro F1、未知拒答率、禁用事实命中数、P50/P95 延迟、吞吐量、Python 峰值分配和可用时的 RSS 增量。检索基准刻意不包含 Planner/Narrator 生成时间，避免不同模型路由掩盖算法本身的成本；真实 LLM 链路另由 `local_harness_smoke.py` 验证。

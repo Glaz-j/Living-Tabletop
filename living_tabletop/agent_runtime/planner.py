@@ -48,7 +48,12 @@ class TurnPlanner:
                     "speech_act": [
                         "none", "question", "statement", "request", "smalltalk", "deception", "threat"
                     ],
-                    "knowledge_query": "for a factual question to a present NPC; describe what to retrieve, never answer it",
+                    "knowledge_query": (
+                        "for factual questions to a present NPC; describe what to retrieve, never answer it; "
+                        "split every independently answerable sub-question into atoms; relation_types may only use "
+                        "duration,time,location,status,identity,cause,quantity,history,historical_pattern,"
+                        "experience,family,weakness,ownership,burial"
+                    ),
                 },
             },
         }
@@ -58,7 +63,9 @@ class TurnPlanner:
             "疑问句通常是 TALK，不是调查、说服或试探；普通闲聊通常 automatic。"
             "只有结果存在真实不确定性或对方明确抵抗时才选择 check；物理上不可能的结果选择 impossible，仍接受这次尝试。"
             "若玩家向在场 NPC 询问事实，输出 speech_act=question、addressee_id、referents 和 KnowledgeQuery。"
-            "KnowledgeQuery 只描述要查什么，不得猜测答案或 fact_id；NPC 是否知道以及是否披露由后续系统决定。"
+            "KnowledgeQuery 只描述要查什么，不得猜测答案或 fact_id；复合问题必须按语义拆成 atoms，"
+            "每个 atom 单独保留 query_text、subject_entity_ids、predicate_hints 和 relation_types。"
+            "NPC 是否知道以及是否披露由后续系统决定。"
             "不要输出成功/失败文本、NPC 回答、事实值、效果、世界状态修改或导演建议。"
             "open_plan.goal 必须逐字复制玩家原文。只输出符合 JSON Schema 的对象。"
         )

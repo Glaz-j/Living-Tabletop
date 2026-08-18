@@ -169,12 +169,16 @@ class OutcomeBuilder:
         ]
         intervention = resolution.director_intervention
         director_opportunity = None
-        if intervention is not None:
+        if intervention is not None and (intervention.player_visible_text or "").strip():
             director_opportunity = {
                 "kind": intervention.action,
-                "text": intervention.world_justification,
-                "affected_entities": intervention.affected_entities,
+                "text": intervention.player_visible_text.strip(),
             }
+        open_plan_event = next(
+            (event for event in event_list if event.type == "open_plan_committed"),
+            None,
+        )
+        open_plan_payload = open_plan_event.payload if open_plan_event is not None else {}
         succeeded = resolution.check.succeeded if resolution.check else resolution.accepted
         canonical_beats = action.success_beats if succeeded else action.failure_beats
         return OutcomeEnvelope(
@@ -196,6 +200,11 @@ class OutcomeBuilder:
             },
             present_entities=present,
             director_opportunity=director_opportunity,
+            knowledge_query_text=open_plan_payload.get("knowledge_query_text"),
+            answer_coverage={
+                "answered_parts": open_plan_payload.get("answered_query_parts", []),
+                "unanswered_parts": open_plan_payload.get("unanswered_query_parts", []),
+            },
         )
 
 

@@ -30,6 +30,19 @@ class Director:
         self.scenario = scenario
         self.kernel = kernel
 
+    @staticmethod
+    def _definition_was_used(state: WorldState, definition_id: str, justification: str) -> bool:
+        """Recognize both new interventions and legacy saves without definition IDs."""
+
+        return any(
+            previous.source_definition_id == definition_id
+            or (
+                previous.source_definition_id is None
+                and previous.world_justification == justification
+            )
+            for previous in state.director.interventions
+        )
+
     def observe_action(
         self,
         state: WorldState,
@@ -161,6 +174,8 @@ class Director:
                     action="offer_respite",
                     reason=f"连续失败 {exp.failure_streak} 次，喘息需求为 {exp.relief_need}。",
                     world_justification=respite.world_justification,
+                    source_definition_id=respite.id,
+                    player_visible_text=respite.player_visible_text,
                     affected_entities=respite.affected_entities or [state.player.entity_id],
                     expected_experience_effect="降低挫败和资源压力，但不取消任何既有失败。",
                     effects=respite.effects,
@@ -189,6 +204,8 @@ class Director:
                         else f"玩家已有 {state.director.actions_without_progress} 个有效行动未获得调查进展。"
                     ),
                     world_justification=hint.world_justification,
+                    source_definition_id=hint.id,
+                    player_visible_text=hint.player_visible_text,
                     affected_entities=hint.affected_entities,
                     expected_experience_effect="增加一个可选择的线索发现机会，不直接授予事实。",
                     effects=hint.effects,
@@ -201,6 +218,10 @@ class Director:
                     item
                     for item in self.scenario.complications
                     if self.kernel.all_conditions_met(state, item.requirements)
+                    and (
+                        not item.once
+                        or not self._definition_was_used(state, item.id, item.world_justification)
+                    )
                 ),
                 None,
             )
@@ -210,6 +231,8 @@ class Director:
                     action="increase_pressure",
                     reason=f"玩家连续成功 {exp.success_streak} 次，当前张力仅为 {exp.tension}。",
                     world_justification=complication.world_justification,
+                    source_definition_id=complication.id,
+                    player_visible_text=complication.player_visible_text,
                     affected_entities=complication.affected_entities,
                     expected_experience_effect="推进尚未完成的敌对准备，提升时间压力，不改变玩家成功结果。",
                     effects=complication.effects,

@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "scenario_id": "the_haunting_corbitt_house_v1",
+  "description": "科比特宅邸 NPC 知识检索评测。答案严格受 WorldState.npc_knowledge 约束；空 gold 表示应当拒绝召回。",
+  "cases": [
+    {
+      "id": "knott_children_direct",
+      "tags": ["positive", "family", "paraphrase"],
+      "query": {"query_text": "孩子们后来怎么样了？", "asker_id": "player", "addressee_id": "npc_knott", "max_results": 3},
+      "gold_fact_ids": ["f_macario_children_status"]
+    },
+    {
+      "id": "knott_children_guardian",
+      "tags": ["positive", "family", "paraphrase"],
+      "query": {"query_text": "马卡里奥家的小孩最后由谁照顾？", "asker_id": "player", "addressee_id": "npc_knott", "predicate_hints": ["children_status"], "max_results": 3},
+      "gold_fact_ids": ["f_macario_children_status"]
+    },
+    {
+      "id": "knott_children_destination",
+      "tags": ["positive", "family", "location"],
+      "query": {"query_text": "那两个孩子被送到哪里去了？", "asker_id": "player", "addressee_id": "npc_knott", "max_results": 3},
+      "gold_fact_ids": ["f_macario_children_status"]
+    },
+    {
+      "id": "knott_children_planner_pollution",
+      "tags": ["positive", "family", "regression", "planner_noise"],
+      "query": {
+        "query_text": "上一户租客（马卡里奥一家）的孩子们后来的情况如何？",
+        "asker_id": "player",
+        "addressee_id": "npc_knott",
+        "subject_entity_ids": ["npc_knott"],
+        "predicate_hints": ["child", "fate", "status"],
+        "atoms": [
+          {"id": "atom_1", "query_text": "上一户租客的孩子后来怎么样了？", "subject_entity_ids": ["npc_knott"], "predicate_hints": ["child", "fate"], "relation_types": ["knows", "heard_about"]}
+        ],
+        "max_results": 1
+      },
+      "gold_fact_ids": ["f_macario_children_status"]
+    },
+    {
+      "id": "knott_parents_location",
+      "tags": ["positive", "family", "location"],
+      "query": {"query_text": "马卡里奥夫妇现在住在哪里？", "asker_id": "player", "addressee_id": "npc_knott", "subject_entity_ids": ["npc_gabriela"], "max_results": 3},
+      "gold_fact_ids": ["f_macario_parents_status"]
+    },
+    {
+      "id": "knott_parents_status",
+      "tags": ["positive", "family", "status"],
+      "query": {"query_text": "那对夫妻二人后来如何？", "asker_id": "player", "addressee_id": "npc_knott", "predicate_hints": ["parents_status"], "max_results": 3},
+      "gold_fact_ids": ["f_macario_parents_status"]
+    },
+    {
+      "id": "knott_last_tenants_event",
+      "tags": ["positive", "history", "experience"],
+      "query": {"query_text": "上一户租客在宅子里发生了什么？", "asker_id": "player", "addressee_id": "npc_knott", "max_results": 3},
+      "gold_fact_ids": ["f_macario_tragedy"]
+    },
+    {
+      "id": "knott_family_breakdown",
+      "tags": ["positive", "experience", "paraphrase"],
+      "query": {"query_text": "马卡里奥一家为什么仓促离开那栋房子，出了什么事？", "asker_id": "player", "addressee_id": "npc_knott", "predicate_hints": ["last_tenants"], "max_results": 3},
+      "gold_fact_ids": ["f_macario_tragedy"]
+    },
+    {
+      "id": "knott_parents_and_children_atoms",
+      "tags": ["positive", "compound", "atoms"],
+      "query": {
+        "query_text": "他们夫妻后来去了哪里？还有孩子们呢？",
+        "asker_id": "player",
+        "addressee_id": "npc_knott",
+        "subject_entity_ids": ["npc_gabriela"],
+        "atoms": [
+          {"id": "parents", "query_text": "马卡里奥夫妇后来去了哪里", "subject_entity_ids": ["npc_gabriela"], "predicate_hints": ["parents_status"], "relation_types": ["location", "family"]},
+          {"id": "children", "query_text": "孩子们后来如何安置", "subject_entity_ids": ["npc_gabriela"], "predicate_hints": ["children_status"], "relation_types": ["status", "family"]}
+        ],
+        "max_results": 3
+      },
+      "gold_fact_ids": ["f_macario_parents_status", "f_macario_children_status"]
+    },
+    {
+      "id": "regression_duration_and_previous_incidents",
+      "tags": ["negative", "compound", "regression", "relation_mismatch"],
+      "query": {
+        "query_text": "询问马卡里奥一家在科比特宅邸居住的具体时长，以及是否有其他前任住户曾遭遇过类似的精神崩溃或异常事件。",
+        "asker_id": "player",
+        "addressee_id": "npc_knott",
+        "subject_entity_ids": ["loc_house_exterior", "npc_knott"],
+        "predicate_hints": ["tenancy_duration", "previous_incidents"],
+        "atoms": [
+          {"id": "duration", "query_text": "马卡里奥一家在宅邸住了多久", "subject_entity_ids": ["loc_house_exterior"], "predicate_hints": ["tenancy_duration"], "relation_types": ["duration"]},
+          {"id": "pattern", "query_text": "其他前任住户是否也遭遇过类似事件", "subject_entity_ids": ["loc_house_exterior"], "predicate_hints": ["previous_incidents"], "relation_types": ["historical_pattern"]}
+        ],
+        "max_results": 3
+      },
+      "gold_fact_ids": [],
+      "forbidden_fact_ids": ["f_macario_parents_status", "f_macario_children_status", "f_macario_tragedy"]
+    },
+    {
+      "id": "knott_duration_unknown",
+      "tags": ["negative", "duration", "relation_mismatch"],
+      "query": {"query_text": "他们在房子里住了多久？", "asker_id": "player", "addressee_id": "npc_knott", "max_results": 3},
+      "gold_fact_ids": [],
+      "forbidden_fact_ids": ["f_macario_parents_status", "f_macario_children_status"]
+    },
+    {
+      "id": "knott_duration_misleading_hint",
+      "tags": ["negative", "duration", "adversarial"],
+      "query": {"query_text": "马卡里奥夫妇具体住了多长时间？", "asker_id": "player", "addressee_id": "npc_knott", "predicate_hints": ["status", "tenancy_duration"], "max_results": 3},
+      "gold_fact_ids": [],
+      "forbidden_fact_ids": ["f_macario_parents_status"]
+    },
+    {
+      "id": "knott_historical_pattern_unknown",
+      "tags": ["negative", "history", "scope"],
+      "query": {"query_text": "历任住户是不是都遇到过类似惨剧？", "asker_id": "player", "addressee_id": "npc_knott", "predicate_hints": ["previous_incidents"], "max_results": 3},
+      "gold_fact_ids": [],
+      "forbidden_fact_ids": ["f_macario_tragedy"]
+    },
+    {
+      "id": "knott_sanitarium_definition_unknown",
+      "tags": ["negative", "location", "missing_fact"],
+      "query": {"query_text": "罗克斯伯里疗养院是什么地方？", "asker_id": "player", "addressee_id": "npc_knott", "subject_entity_ids": ["loc_sanitarium"], "predicate_hints": ["location_type"], "max_results": 3},
+      "gold_fact_ids": [],
+      "forbidden_fact_ids": ["f_macario_parents_status"]
+    },
+    {
+      "id": "knott_weather_unknown",
+      "tags": ["negative", "smalltalk", "topic"],
+      "query": {"query_text": "今天下午还会下雨吗？", "asker_id": "player", "addressee_id": "npc_knott", "max_results": 3},
+      "gold_fact_ids": []
+    },
+    {
+      "id": "knott_house_owner_unknown",
+      "tags": ["negative", "ownership", "permission"],
+      "query": {"query_text": "最早是谁买下了这栋宅子？", "asker_id": "player", "addressee_id": "npc_knott", "subject_entity_ids": ["loc_house_exterior"], "max_results": 3},
+      "gold_fact_ids": []
+    },
+    {
+      "id": "knott_burial_unknown",
+      "tags": ["negative", "burial", "permission"],
+      "query": {"query_text": "科比特死后埋在什么地方？", "asker_id": "player", "addressee_id": "npc_knott", "subject_entity_ids": ["creature_corbitt"], "max_results": 3},
+      "gold_fact_ids": []
+    },
+    {
+      "id": "knott_ambiguous_pronoun",
+      "tags": ["negative", "ambiguous", "abstention"],
+      "query": {"query_text": "他们呢？", "asker_id": "player", "addressee_id": "npc_knott", "subject_entity_ids": ["npc_gabriela"], "max_results": 3},
+      "gold_fact_ids": []
+    },
+    {
+      "id": "dooley_parents_destination",
+      "tags": ["positive", "location", "addressee"],
+      "query": {"query_text": "马卡里奥夫妇后来被送到哪儿了？", "asker_id": "player", "addressee_id": "npc_dooley", "subject_entity_ids": ["npc_gabriela"], "max_results": 3},
+      "gold_fact_ids": ["f_macario_sanitarium"]
+    },
+    {
+      "id": "dooley_parents_where_now",
+      "tags": ["positive", "location", "paraphrase"],
+      "query": {"query_text": "那对夫妻如今在哪里？", "asker_id": "player", "addressee_id": "npc_dooley", "predicate_hints": ["location"], "max_results": 3},
+      "gold_fact_ids": ["f_macario_sanitarium"]
+    },
+    {
+      "id": "dooley_children",
+      "tags": ["positive", "family", "addressee"],
+      "query": {"query_text": "他们的两个孩子后来怎么办了？", "asker_id": "player", "addressee_id": "npc_dooley", "predicate_hints": ["children_status"], "max_results": 3},
+      "gold_fact_ids": ["f_macario_children_status"]
+    },
+    {
+      "id": "dooley_family_compound",
+      "tags": ["positive", "compound", "atoms"],
+      "query": {
+        "query_text": "夫妇去了哪里，孩子又由谁照顾？",
+        "asker_id": "player",
+        "addressee_id": "npc_dooley",
+        "atoms": [
+          {"id": "parents", "query_text": "夫妇去了哪里", "subject_entity_ids": ["npc_gabriela"], "predicate_hints": ["location"], "relation_types": ["location", "family"]},
+          {"id": "children", "query_text": "孩子由谁照顾", "subject_entity_ids": ["npc_gabriela"], "predicate_hints": ["children_status"], "relation_types": ["status", "family"]}
+        ],
+        "max_results": 3
+      },
+      "gold_fact_ids": ["f_macario_sanitarium", "f_macario_children_status"]
+    },
+    {
+      "id": "dooley_duration_unknown",
+      "tags": ["negative", "duration", "addressee"],
+      "query": {"query_text": "马卡里奥一家在那里住了几个月？", "asker_id": "player", "addressee_id": "npc_dooley", "max_results": 3},
+      "gold_fact_ids": [],
+      "forbidden_fact_ids": ["f_macario_sanitarium", "f_macario_children_status"]
+    },
+    {
+      "id": "dooley_house_history_unknown",
+      "tags": ["negative", "history", "permission"],
+      "query": {"query_text": "过去几十年还有多少户人家在那栋房子出事？", "asker_id": "player", "addressee_id": "npc_dooley", "predicate_hints": ["history"], "max_results": 3},
+      "gold_fact_ids": []
+    },
+    {
+      "id": "gabriela_haunting_direct",
+      "tags": ["positive", "experience", "addressee"],
+      "query": {"query_text": "你在那栋房子里亲眼看见了什么？", "asker_id": "player", "addressee_id": "npc_gabriela", "predicate_hints": ["haunting"], "max_results": 3},
+      "gold_fact_ids": ["f_gabriela_testimony"]
+    },
+    {
+      "id": "gabriela_flying_objects",
+      "tags": ["positive", "experience", "paraphrase"],
+      "query": {"query_text": "屋里的家具和餐具真的会自己飞起来吗？", "asker_id": "player", "addressee_id": "npc_gabriela", "max_results": 3},
+      "gold_fact_ids": ["f_gabriela_testimony"]
+    },
+    {
+      "id": "gabriela_night_presence",
+      "tags": ["positive", "experience", "paraphrase"],
+      "query": {"query_text": "夜里靠近你的那个东西是什么样的？", "asker_id": "player", "addressee_id": "npc_gabriela", "predicate_hints": ["experience"], "max_results": 3},
+      "gold_fact_ids": ["f_gabriela_testimony"]
+    },
+    {
+      "id": "gabriela_children_unknown",
+      "tags": ["negative", "family", "epistemic_scope"],
+      "query": {"query_text": "你的孩子现在由谁照顾？", "asker_id": "player", "addressee_id": "npc_gabriela", "max_results": 3},
+      "gold_fact_ids": [],
+      "forbidden_fact_ids": ["f_gabriela_testimony"]
+    },
+    {
+      "id": "gabriela_weakness_unknown",
+      "tags": ["negative", "weakness", "epistemic_scope"],
+      "query": {"query_text": "那东西究竟怕什么武器？", "asker_id": "player", "addressee_id": "npc_gabriela", "max_results": 3},
+      "gold_fact_ids": []
+    },
+    {
+      "id": "vittorio_weapon_direct",
+      "tags": ["positive", "weakness", "addressee"],
+      "query": {"query_text": "怎样才能伤到墙后面的恶物？", "asker_id": "player", "addressee_id": "npc_vittorio", "predicate_hints": ["weakness"], "max_results": 3},
+      "gold_fact_ids": ["f_own_weapon"]
+    },
+    {
+      "id": "vittorio_own_weapon",
+      "tags": ["positive", "weakness", "paraphrase"],
+      "query": {"query_text": "你说用它自己的武器反制，是什么意思？", "asker_id": "player", "addressee_id": "npc_vittorio", "max_results": 3},
+      "gold_fact_ids": ["f_own_weapon"]
+    },
+    {
+      "id": "vittorio_children_unknown",
+      "tags": ["negative", "family", "epistemic_scope"],
+      "query": {"query_text": "你的孩子后来去了哪里？", "asker_id": "player", "addressee_id": "npc_vittorio", "max_results": 3},
+      "gold_fact_ids": [],
+      "forbidden_fact_ids": ["f_own_weapon"]
+    },
+    {
+      "id": "vittorio_house_duration_unknown",
+      "tags": ["negative", "duration", "epistemic_scope"],
+      "query": {"query_text": "你们一家在宅邸里住了多久？", "asker_id": "player", "addressee_id": "npc_vittorio", "max_results": 3},
+      "gold_fact_ids": []
+    },
+    {
+      "id": "wrong_addressee_arty_children",
+      "tags": ["negative", "wrong_addressee", "permission"],
+      "query": {"query_text": "马卡里奥家的孩子后来怎么样？", "asker_id": "player", "addressee_id": "npc_arty", "max_results": 3},
+      "gold_fact_ids": []
+    },
+    {
+      "id": "wrong_addressee_knott_weakness",
+      "tags": ["negative", "wrong_addressee", "permission"],
+      "query": {"query_text": "科比特害怕自己的哪件武器？", "asker_id": "player", "addressee_id": "npc_knott", "max_results": 3},
+      "gold_fact_ids": []
+    },
+    {
+      "id": "wrong_addressee_dooley_testimony",
+      "tags": ["negative", "wrong_addressee", "permission"],
+      "query": {"query_text": "你亲眼见过家具自己飞起来吗？", "asker_id": "player", "addressee_id": "npc_dooley", "max_results": 3},
+      "gold_fact_ids": []
+    },
+    {
+      "id": "knott_exact_predicate_parent",
+      "tags": ["positive", "structured", "predicate"],
+      "query": {"query_text": "请说明夫妇的后续情况", "asker_id": "player", "addressee_id": "npc_knott", "predicate_hints": ["parents_status"], "max_results": 3},
+      "gold_fact_ids": ["f_macario_parents_status"]
+    },
+    {
+      "id": "knott_exact_predicate_child",
+      "tags": ["positive", "structured", "predicate"],
+      "query": {"query_text": "请说明孩子的后续情况", "asker_id": "player", "addressee_id": "npc_knott", "predicate_hints": ["children_status"], "max_results": 3},
+      "gold_fact_ids": ["f_macario_children_status"]
+    },
+    {
+      "id": "knott_explicit_compound_partial",
+      "tags": ["positive", "negative", "compound", "partial"],
+      "query": {
+        "query_text": "孩子去了哪里，他们在宅子里又住了多久？",
+        "asker_id": "player",
+        "addressee_id": "npc_knott",
+        "atoms": [
+          {"id": "children", "query_text": "孩子去了哪里", "subject_entity_ids": ["npc_gabriela"], "predicate_hints": ["children_status"], "relation_types": ["family", "location"]},
+          {"id": "duration", "query_text": "他们在宅子里住了多久", "subject_entity_ids": ["loc_house_exterior"], "predicate_hints": ["tenancy_duration"], "relation_types": ["duration"]}
+        ],
+        "max_results": 3
+      },
+      "gold_fact_ids": ["f_macario_children_status"],
+      "expected_unanswered_atom_ids": ["duration"],
+      "forbidden_fact_ids": ["f_macario_parents_status"]
+    }
+  ]
+}

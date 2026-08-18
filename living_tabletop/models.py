@@ -250,7 +250,9 @@ class ComplicationDefinition(DomainModel):
     requirements: list[Condition] = Field(default_factory=list)
     effects: list[Effect]
     world_justification: str
+    player_visible_text: str | None = None
     affected_entities: list[str] = Field(default_factory=list)
+    once: bool = False
 
 
 class RespiteDefinition(DomainModel):
@@ -259,6 +261,7 @@ class RespiteDefinition(DomainModel):
     requirements: list[Condition] = Field(default_factory=list)
     effects: list[Effect]
     world_justification: str
+    player_visible_text: str | None = None
     affected_entities: list[str] = Field(default_factory=list)
 
 
@@ -268,6 +271,7 @@ class DirectorHintDefinition(DomainModel):
     requirements: list[Condition] = Field(default_factory=list)
     effects: list[Effect]
     world_justification: str
+    player_visible_text: str | None = None
     affected_entities: list[str] = Field(default_factory=list)
 
 
@@ -400,6 +404,8 @@ class DirectorIntervention(DomainModel):
     ]
     reason: str
     world_justification: str
+    source_definition_id: str | None = None
+    player_visible_text: str | None = None
     affected_entities: list[str] = Field(default_factory=list)
     expected_experience_effect: str
     effects: list[Effect] = Field(default_factory=list)
@@ -639,6 +645,9 @@ class OpenActionPlan(DomainModel):
     approved_fact_ids: list[str] = Field(default_factory=list)
     knowledge_source_id: str | None = None
     disclosure_mode: Literal["automatic", "check", "refuse", "unknown"] | None = None
+    knowledge_query_text: str | None = Field(default=None, max_length=1000)
+    answered_query_parts: list[str] = Field(default_factory=list)
+    unanswered_query_parts: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def normalize_resolution(self) -> "OpenActionPlan":

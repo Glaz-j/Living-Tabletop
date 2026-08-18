@@ -56,7 +56,8 @@
         "effects": [
           {"op":"mark_flag","params":{"key":"director_case_note_opportunity","value":true,"visible":true}}
         ],
-        "world_justification": "诺特将写有前租客姓名和宅邸地址的便笺推到你手边，没有催促，只让它安静地留在咖啡杯旁。",
+        "world_justification": "诺特掌握一张可作为公开索引入口的地址便笺，重现它不会直接授予调查结论。",
+        "player_visible_text": "诺特将写有前租客姓名和宅邸地址的便笺推到你手边，没有催促，只让它安静地留在咖啡杯旁。",
         "affected_entities": ["npc_knott"]
       }
     ]
@@ -402,7 +403,8 @@
       "id":"complication_corbitt_attention","label":"科比特察觉调查正在逼近","requirements":[{"subject":"flag:corbitt_destroyed","predicate":"value","operator":"eq","value":false},{"subject":"threat:threat_corbitt_awareness","predicate":"progress","operator":"lte","value":80}],
       "effects":[{"op":"advance_threat","params":{"threat_id":"threat_corbitt_awareness","amount":10}}],
       "world_justification":"科比特的意识覆盖整栋宅邸，持续查问住户与教会记录会让他察觉有人正在接近秘密。",
-      "affected_entities":["creature_corbitt","threat_corbitt_awareness"]
+      "affected_entities":["creature_corbitt","threat_corbitt_awareness"],
+      "once":true
     }
   ],
   "respites": [
@@ -410,12 +412,14 @@
       "id":"respite_gabriela_warning","label":"回想加布里埃拉保持清醒的办法","requirements":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_gabriela_testimony"},{"subject":"player","predicate":"stress","operator":"gte","value":2}],
       "effects":[{"op":"modify_player","params":{"field":"stress","delta":-2}},{"op":"modify_player","params":{"field":"sanity","delta":1}}],
       "world_justification":"加布里埃拉描述过如何用固定祷词和触觉确认自己仍在现实中，这段证词可以帮助玩家抵抗宅邸制造的恐惧。",
+      "player_visible_text":"你照加布里埃拉说过的办法触摸身边几样真实物件，让呼吸重新跟上眼前可验证的细节。",
       "affected_entities":["player","npc_gabriela"]
     },
     {
       "id":"respite_gabriela_grounding","label":"用加布里埃拉的办法确认现实","requirements":[{"subject":"player","predicate":"knowledge","operator":"known","value":"f_gabriela_testimony"},{"subject":"player","predicate":"sanity","operator":"lte","value":55}],
       "effects":[{"op":"modify_player","params":{"field":"sanity","delta":1}}],
       "world_justification":"加布里埃拉教过你用固定触感与可验证细节对抗宅邸施加的错觉。",
+      "player_visible_text":"你用固定触感逐一确认身边的现实，短暂压下了那些不肯散去的错觉。",
       "affected_entities":["player","npc_gabriela"]
     }
   ],

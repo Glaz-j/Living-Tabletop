@@ -84,6 +84,18 @@ class PlanValidator:
                     for entity_id in plan.knowledge_query.subject_entity_ids
                     if entity_id in state.entities
                 ]
+                plan.knowledge_query.atoms = [
+                    atom.model_copy(
+                        update={
+                            "subject_entity_ids": [
+                                entity_id
+                                for entity_id in atom.subject_entity_ids
+                                if entity_id in state.entities
+                            ]
+                        }
+                    )
+                    for atom in plan.knowledge_query.atoms
+                ]
                 # Fact identifiers are resolver-owned authority, never Planner authority.
                 plan.knowledge_query.explicit_fact_ids = []
 

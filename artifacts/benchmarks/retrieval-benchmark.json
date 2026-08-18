@@ -1,0 +1,2905 @@
+{
+  "benchmark_version": 1,
+  "created_at": "2026-08-18T19:50:30.109619+00:00",
+  "eval_path": "evals\\retrieval\\the_haunting_v1.json",
+  "eval_sha256": "0b8308354ab38d384af104a620d8dc78e0c74f8cf0c34148a45dee3331bde87e",
+  "scenario_id": "the_haunting_corbitt_house_v1",
+  "iterations_per_case": 250,
+  "environment": {
+    "python": "3.12.7",
+    "platform": "Windows-11-10.0.22631-SP0",
+    "implementation": "CPython"
+  },
+  "selected_strategy": "typed_hybrid_v2",
+  "results": [
+    {
+      "strategy": "legacy",
+      "aggregate": {
+        "case_count": 39,
+        "exact_set_accuracy": 0.6153846153846154,
+        "top1_accuracy": 0.7948717948717948,
+        "macro_precision": 0.688034188034188,
+        "macro_recall": 0.7948717948717948,
+        "macro_f1": 0.717948717948718,
+        "unknown_accuracy": 0.7222222222222222,
+        "forbidden_hit_count": 4,
+        "latency_ms_mean": 0.621836082051282,
+        "latency_ms_p50": 0.5715,
+        "latency_ms_p95": 1.1395549999999999,
+        "throughput_queries_per_second": 1608.1408410738238,
+        "cpu_ms_total": 2656.25,
+        "peak_python_alloc_kib": 348.978515625,
+        "rss_delta_kib": 272.0
+      },
+      "tag_macro_f1": {
+        "abstention": 0.0,
+        "addressee": 0.9333333333333333,
+        "adversarial": 0.0,
+        "ambiguous": 0.0,
+        "atoms": 1.0,
+        "burial": 1.0,
+        "compound": 0.75,
+        "duration": 0.75,
+        "epistemic_scope": 1.0,
+        "experience": 0.4,
+        "family": 0.8518518518518519,
+        "history": 0.3333333333333333,
+        "location": 0.6,
+        "missing_fact": 0.0,
+        "negative": 0.7368421052631579,
+        "ownership": 1.0,
+        "paraphrase": 0.5952380952380952,
+        "partial": 1.0,
+        "permission": 1.0,
+        "planner_noise": 1.0,
+        "positive": 0.7142857142857143,
+        "predicate": 0.5,
+        "regression": 0.5,
+        "relation_mismatch": 0.5,
+        "scope": 0.0,
+        "smalltalk": 1.0,
+        "status": 0.5,
+        "structured": 0.5,
+        "topic": 1.0,
+        "weakness": 1.0,
+        "wrong_addressee": 1.0
+      },
+      "failures": [
+        {
+          "id": "knott_children_guardian",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_location",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_status",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_last_tenants_event",
+          "gold_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_family_breakdown",
+          "gold_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "regression_duration_and_previous_incidents",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [
+            "f_macario_tragedy"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_duration_misleading_hint",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [
+            "f_macario_parents_status"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_historical_pattern_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [
+            "f_macario_tragedy"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_sanitarium_definition_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [
+            "f_macario_parents_status"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_ambiguous_pronoun",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "dooley_parents_destination",
+          "gold_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_sanitarium",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "dooley_parents_where_now",
+          "gold_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_sanitarium",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "gabriela_flying_objects",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_exact_predicate_parent",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_exact_predicate_child",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        }
+      ],
+      "cases": [
+        {
+          "id": "knott_children_direct",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_children_guardian",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_children_destination",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_children_planner_pollution",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_location",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_status",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_last_tenants_event",
+          "gold_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_family_breakdown",
+          "gold_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_parents_and_children_atoms",
+          "gold_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "regression_duration_and_previous_incidents",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [
+            "f_macario_tragedy"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_duration_misleading_hint",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [
+            "f_macario_parents_status"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_historical_pattern_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [
+            "f_macario_tragedy"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_sanitarium_definition_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [
+            "f_macario_parents_status"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_weather_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_house_owner_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_burial_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_ambiguous_pronoun",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "dooley_parents_destination",
+          "gold_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_sanitarium",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "dooley_parents_where_now",
+          "gold_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_sanitarium",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "dooley_children",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_family_compound",
+          "gold_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_sanitarium",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_house_history_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_haunting_direct",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_flying_objects",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "gabriela_night_presence",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_children_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_weakness_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_weapon_direct",
+          "gold_fact_ids": [
+            "f_own_weapon"
+          ],
+          "retrieved_fact_ids": [
+            "f_own_weapon"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_own_weapon",
+          "gold_fact_ids": [
+            "f_own_weapon"
+          ],
+          "retrieved_fact_ids": [
+            "f_own_weapon"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_children_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_house_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "wrong_addressee_arty_children",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "wrong_addressee_knott_weakness",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "wrong_addressee_dooley_testimony",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_exact_predicate_parent",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_exact_predicate_child",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_explicit_compound_partial",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        }
+      ]
+    },
+    {
+      "strategy": "bm25",
+      "aggregate": {
+        "case_count": 39,
+        "exact_set_accuracy": 0.6153846153846154,
+        "top1_accuracy": 0.7435897435897436,
+        "macro_precision": 0.6794871794871795,
+        "macro_recall": 0.7307692307692307,
+        "macro_f1": 0.688034188034188,
+        "unknown_accuracy": 0.6666666666666666,
+        "forbidden_hit_count": 7,
+        "latency_ms_mean": 0.5088390051282051,
+        "latency_ms_p50": 0.54025,
+        "latency_ms_p95": 0.8439549999999999,
+        "throughput_queries_per_second": 1965.258146332638,
+        "cpu_ms_total": 2109.375,
+        "peak_python_alloc_kib": 351.244140625,
+        "rss_delta_kib": 32.0
+      },
+      "tag_macro_f1": {
+        "abstention": 1.0,
+        "addressee": 0.7333333333333333,
+        "adversarial": 0.0,
+        "ambiguous": 1.0,
+        "atoms": 0.8333333333333333,
+        "burial": 0.0,
+        "compound": 0.6666666666666666,
+        "duration": 0.5,
+        "epistemic_scope": 1.0,
+        "experience": 0.3,
+        "family": 0.7777777777777778,
+        "history": 0.6666666666666666,
+        "location": 0.6333333333333333,
+        "missing_fact": 0.0,
+        "negative": 0.6842105263157895,
+        "ownership": 1.0,
+        "paraphrase": 0.5714285714285714,
+        "partial": 1.0,
+        "permission": 0.6666666666666666,
+        "planner_noise": 0.0,
+        "positive": 0.7063492063492064,
+        "predicate": 1.0,
+        "regression": 0.0,
+        "relation_mismatch": 0.5,
+        "scope": 1.0,
+        "smalltalk": 1.0,
+        "status": 1.0,
+        "structured": 1.0,
+        "topic": 1.0,
+        "weakness": 1.0,
+        "wrong_addressee": 0.6666666666666666
+      },
+      "failures": [
+        {
+          "id": "knott_children_guardian",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_children_planner_pollution",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_parents_location",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_last_tenants_event",
+          "gold_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_family_breakdown",
+          "gold_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy",
+            "f_macario_children_status",
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_and_children_atoms",
+          "gold_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6666666666666666,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "regression_duration_and_previous_incidents",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy",
+            "f_macario_children_status",
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [
+            "f_macario_children_status",
+            "f_macario_parents_status",
+            "f_macario_tragedy"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_duration_misleading_hint",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [
+            "f_macario_parents_status"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_sanitarium_definition_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [
+            "f_macario_parents_status"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_burial_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "dooley_parents_destination",
+          "gold_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_sanitarium",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "dooley_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_sanitarium"
+          ],
+          "forbidden_hits": [
+            "f_macario_children_status",
+            "f_macario_sanitarium"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "gabriela_flying_objects",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "gabriela_night_presence",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "wrong_addressee_knott_weakness",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        }
+      ],
+      "cases": [
+        {
+          "id": "knott_children_direct",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_children_guardian",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_children_destination",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_children_planner_pollution",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_parents_location",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_status",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_last_tenants_event",
+          "gold_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_family_breakdown",
+          "gold_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy",
+            "f_macario_children_status",
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.3333333333333333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_and_children_atoms",
+          "gold_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6666666666666666,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "regression_duration_and_previous_incidents",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy",
+            "f_macario_children_status",
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [
+            "f_macario_children_status",
+            "f_macario_parents_status",
+            "f_macario_tragedy"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_duration_misleading_hint",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status",
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [
+            "f_macario_parents_status"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_historical_pattern_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_sanitarium_definition_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [
+            "f_macario_parents_status"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_weather_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_house_owner_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_burial_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_ambiguous_pronoun",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_parents_destination",
+          "gold_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_sanitarium",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "exact": false,
+          "top1": true
+        },
+        {
+          "id": "dooley_parents_where_now",
+          "gold_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_children",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_family_compound",
+          "gold_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_sanitarium"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_sanitarium"
+          ],
+          "forbidden_hits": [
+            "f_macario_children_status",
+            "f_macario_sanitarium"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "dooley_house_history_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_haunting_direct",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_flying_objects",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "gabriela_night_presence",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "gabriela_children_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_weakness_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_weapon_direct",
+          "gold_fact_ids": [
+            "f_own_weapon"
+          ],
+          "retrieved_fact_ids": [
+            "f_own_weapon"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_own_weapon",
+          "gold_fact_ids": [
+            "f_own_weapon"
+          ],
+          "retrieved_fact_ids": [
+            "f_own_weapon"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_children_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_house_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "wrong_addressee_arty_children",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "wrong_addressee_knott_weakness",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "wrong_addressee_dooley_testimony",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_exact_predicate_parent",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_exact_predicate_child",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_explicit_compound_partial",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        }
+      ]
+    },
+    {
+      "strategy": "typed_hybrid_v1",
+      "aggregate": {
+        "case_count": 39,
+        "exact_set_accuracy": 0.8974358974358975,
+        "top1_accuracy": 0.8974358974358975,
+        "macro_precision": 0.8974358974358975,
+        "macro_recall": 0.8974358974358975,
+        "macro_f1": 0.8974358974358975,
+        "unknown_accuracy": 0.7777777777777778,
+        "forbidden_hit_count": 4,
+        "latency_ms_mean": 0.7592445435897436,
+        "latency_ms_p50": 0.75965,
+        "latency_ms_p95": 1.2486199999999996,
+        "throughput_queries_per_second": 1317.098698229629,
+        "cpu_ms_total": 2703.125,
+        "peak_python_alloc_kib": 359.6875,
+        "rss_delta_kib": 0.0
+      },
+      "tag_macro_f1": {
+        "abstention": 1.0,
+        "addressee": 1.0,
+        "adversarial": 0.0,
+        "ambiguous": 1.0,
+        "atoms": 1.0,
+        "burial": 1.0,
+        "compound": 0.75,
+        "duration": 0.75,
+        "epistemic_scope": 1.0,
+        "experience": 1.0,
+        "family": 1.0,
+        "history": 0.6666666666666666,
+        "location": 0.8,
+        "missing_fact": 0.0,
+        "negative": 0.7894736842105263,
+        "ownership": 1.0,
+        "paraphrase": 1.0,
+        "partial": 1.0,
+        "permission": 1.0,
+        "planner_noise": 1.0,
+        "positive": 1.0,
+        "predicate": 1.0,
+        "regression": 0.5,
+        "relation_mismatch": 0.5,
+        "scope": 0.0,
+        "smalltalk": 1.0,
+        "status": 1.0,
+        "structured": 1.0,
+        "topic": 1.0,
+        "weakness": 1.0,
+        "wrong_addressee": 1.0
+      },
+      "failures": [
+        {
+          "id": "regression_duration_and_previous_incidents",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [
+            "f_macario_tragedy"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_duration_misleading_hint",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [
+            "f_macario_parents_status"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_historical_pattern_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [
+            "f_macario_tragedy"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_sanitarium_definition_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [
+            "f_macario_parents_status"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        }
+      ],
+      "cases": [
+        {
+          "id": "knott_children_direct",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_children_guardian",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_children_destination",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_children_planner_pollution",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_location",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_status",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_last_tenants_event",
+          "gold_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_family_breakdown",
+          "gold_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_and_children_atoms",
+          "gold_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "regression_duration_and_previous_incidents",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [
+            "f_macario_tragedy"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_duration_misleading_hint",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [
+            "f_macario_parents_status"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_historical_pattern_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [
+            "f_macario_tragedy"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_sanitarium_definition_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [
+            "f_macario_parents_status"
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "exact": false,
+          "top1": false
+        },
+        {
+          "id": "knott_weather_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_house_owner_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_burial_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_ambiguous_pronoun",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_parents_destination",
+          "gold_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_parents_where_now",
+          "gold_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_children",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_family_compound",
+          "gold_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_sanitarium"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_house_history_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_haunting_direct",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_flying_objects",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_night_presence",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_children_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_weakness_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_weapon_direct",
+          "gold_fact_ids": [
+            "f_own_weapon"
+          ],
+          "retrieved_fact_ids": [
+            "f_own_weapon"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_own_weapon",
+          "gold_fact_ids": [
+            "f_own_weapon"
+          ],
+          "retrieved_fact_ids": [
+            "f_own_weapon"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_children_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_house_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "wrong_addressee_arty_children",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "wrong_addressee_knott_weakness",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "wrong_addressee_dooley_testimony",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_exact_predicate_parent",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_exact_predicate_child",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_explicit_compound_partial",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        }
+      ]
+    },
+    {
+      "strategy": "typed_hybrid_v2",
+      "aggregate": {
+        "case_count": 39,
+        "exact_set_accuracy": 1.0,
+        "top1_accuracy": 1.0,
+        "macro_precision": 1.0,
+        "macro_recall": 1.0,
+        "macro_f1": 1.0,
+        "unknown_accuracy": 1.0,
+        "forbidden_hit_count": 0,
+        "latency_ms_mean": 0.8203625333333333,
+        "latency_ms_p50": 0.83445,
+        "latency_ms_p95": 1.21511,
+        "throughput_queries_per_second": 1218.9732701916014,
+        "cpu_ms_total": 3718.75,
+        "peak_python_alloc_kib": 361.673828125,
+        "rss_delta_kib": 0.0
+      },
+      "tag_macro_f1": {
+        "abstention": 1.0,
+        "addressee": 1.0,
+        "adversarial": 1.0,
+        "ambiguous": 1.0,
+        "atoms": 1.0,
+        "burial": 1.0,
+        "compound": 1.0,
+        "duration": 1.0,
+        "epistemic_scope": 1.0,
+        "experience": 1.0,
+        "family": 1.0,
+        "history": 1.0,
+        "location": 1.0,
+        "missing_fact": 1.0,
+        "negative": 1.0,
+        "ownership": 1.0,
+        "paraphrase": 1.0,
+        "partial": 1.0,
+        "permission": 1.0,
+        "planner_noise": 1.0,
+        "positive": 1.0,
+        "predicate": 1.0,
+        "regression": 1.0,
+        "relation_mismatch": 1.0,
+        "scope": 1.0,
+        "smalltalk": 1.0,
+        "status": 1.0,
+        "structured": 1.0,
+        "topic": 1.0,
+        "weakness": 1.0,
+        "wrong_addressee": 1.0
+      },
+      "failures": [],
+      "cases": [
+        {
+          "id": "knott_children_direct",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_children_guardian",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_children_destination",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_children_planner_pollution",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_location",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_status",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_last_tenants_event",
+          "gold_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_family_breakdown",
+          "gold_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_tragedy"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_parents_and_children_atoms",
+          "gold_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status",
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "regression_duration_and_previous_incidents",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_duration_misleading_hint",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_historical_pattern_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_sanitarium_definition_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_weather_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_house_owner_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_burial_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_ambiguous_pronoun",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_parents_destination",
+          "gold_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_parents_where_now",
+          "gold_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_sanitarium"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_children",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_family_compound",
+          "gold_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_sanitarium"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status",
+            "f_macario_sanitarium"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "dooley_house_history_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_haunting_direct",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_flying_objects",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_night_presence",
+          "gold_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "retrieved_fact_ids": [
+            "f_gabriela_testimony"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_children_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "gabriela_weakness_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_weapon_direct",
+          "gold_fact_ids": [
+            "f_own_weapon"
+          ],
+          "retrieved_fact_ids": [
+            "f_own_weapon"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_own_weapon",
+          "gold_fact_ids": [
+            "f_own_weapon"
+          ],
+          "retrieved_fact_ids": [
+            "f_own_weapon"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_children_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "vittorio_house_duration_unknown",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "wrong_addressee_arty_children",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "wrong_addressee_knott_weakness",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "wrong_addressee_dooley_testimony",
+          "gold_fact_ids": [],
+          "retrieved_fact_ids": [],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_exact_predicate_parent",
+          "gold_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_parents_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_exact_predicate_child",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        },
+        {
+          "id": "knott_explicit_compound_partial",
+          "gold_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "retrieved_fact_ids": [
+            "f_macario_children_status"
+          ],
+          "forbidden_hits": [],
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "exact": true,
+          "top1": true
+        }
+      ]
+    }
+  ]
+}

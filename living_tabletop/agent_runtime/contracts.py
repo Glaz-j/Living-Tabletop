@@ -34,6 +34,16 @@ class ResolvedReferent(RuntimeModel):
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
+class KnowledgeQueryAtom(RuntimeModel):
+    """One independently answerable part of a player's factual question."""
+
+    id: str = Field(min_length=1, max_length=80)
+    query_text: str = Field(min_length=1, max_length=500)
+    subject_entity_ids: list[str] = Field(default_factory=list)
+    predicate_hints: list[str] = Field(default_factory=list)
+    relation_types: list[str] = Field(default_factory=list)
+
+
 class KnowledgeQuery(RuntimeModel):
     query_text: str = Field(min_length=1, max_length=1000)
     asker_id: str
@@ -41,6 +51,7 @@ class KnowledgeQuery(RuntimeModel):
     subject_entity_ids: list[str] = Field(default_factory=list)
     predicate_hints: list[str] = Field(default_factory=list)
     explicit_fact_ids: list[str] = Field(default_factory=list)
+    atoms: list[KnowledgeQueryAtom] = Field(default_factory=list, max_length=6)
     max_results: int = Field(default=3, ge=1, le=8)
 
 
@@ -112,8 +123,11 @@ class EvidenceCandidate(RuntimeModel):
     value: Any
     confidence: float = Field(ge=0.0, le=1.0)
     concealed: bool = False
-    score: int = Field(default=0, ge=0)
+    score: float = Field(default=0, ge=0)
     knowledge_source: str
+    matched_atom_ids: list[str] = Field(default_factory=list)
+    relation_types: list[str] = Field(default_factory=list)
+    component_scores: dict[str, float] = Field(default_factory=dict)
 
 
 class DisclosureDecision(RuntimeModel):
@@ -125,6 +139,9 @@ class DisclosureDecision(RuntimeModel):
     difficulty: Literal["regular", "hard", "extreme"] = "regular"
     canonical_success: str
     canonical_failure: str
+    answered_atom_ids: list[str] = Field(default_factory=list)
+    unanswered_atom_ids: list[str] = Field(default_factory=list)
+    unanswered_questions: list[str] = Field(default_factory=list)
 
 
 class ValidatedActionPlan(RuntimeModel):
@@ -167,6 +184,8 @@ class OutcomeEnvelope(RuntimeModel):
     scene: dict[str, Any] = Field(default_factory=dict)
     present_entities: list[dict[str, Any]] = Field(default_factory=list)
     director_opportunity: dict[str, Any] | None = None
+    knowledge_query_text: str | None = None
+    answer_coverage: dict[str, Any] = Field(default_factory=dict)
 
 
 class GroundingReport(RuntimeModel):

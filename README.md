@@ -29,7 +29,7 @@ Copy-Item .env.example .env
 
 TurnPlanner 与 Narrator 的模型输出会经过轻量原生 Harness：优先请求严格 JSON Schema，使用 Pydantic 校验结构及运行时约束；首次结果不合法时携带精确错误修复一次。TurnPlanner 只输出动作、对话行为、指代和知识查询，不能输出结果 prose 或 effects；Harness 不直接修改 World State，也不限制玩家输入。
 
-NPC 问答使用 `KnowledgeResolver → DisclosurePolicy → WorldKernel`：只有 NPC 结构化知识表中的事实才能被自动披露或进入社交检定，披露事件携带 `fact_id` 和来源 NPC。每轮 `TurnTrace` 会保存输入、上下文摘要、Planner、证据、披露、Kernel 事件、状态差异、Outcome 与 grounding 结果，且仅在开发者视图中出现。完整设计见 [docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md)。
+NPC 问答使用 `KnowledgeResolver → DisclosurePolicy → WorldKernel`：Planner 先把复合问题拆成可独立回答的 atoms，Resolver 再用关系类型、实体范围、中文 BM25 与 RRF 做轻量混合召回。只有覆盖对应 atom、且确实存在于 NPC 结构化知识表中的事实才能被披露；未覆盖部分会明确保留未知。披露事件携带 `fact_id` 和来源 NPC。每轮 `TurnTrace` 会保存输入、上下文摘要、Planner、分项证据、披露、Kernel 事件、状态差异、Outcome 与 grounding 结果，且仅在开发者视图中出现。完整设计见 [docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md)。
 
 正式游戏默认使用 `auto` 路由：先调用本地 Ollama 的 `qwen3.5:9b-q4_K_M`，本地连接、生成或结构化解析失败时再切换远程 API。右上角“模型”面板可以在运行时切换自动、本地或远程模式，指定已发现的模型并执行真实生成测试；选择会保存在 `data/llm_preferences.json`，不会保存或暴露 API Key。
 
@@ -51,6 +51,7 @@ pytest --cov=living_tabletop --cov-report=term-missing
 python scripts/playthrough.py
 python scripts/self_play.py --scenario all
 python scripts/rules_playtest.py
+python scripts/benchmark_retrieval.py --iterations 250
 ```
 
 `playthrough.py` 保留一条《圣玛丽医院》的固定通关路线。`self_play.py` 是多路线测试实验室：它会运行研究优先、社交优先、冒险直闯、探索和随机策略，也会执行覆盖指定结局的脚本路线。`rules_playtest.py` 专门覆盖接受失败、幸运改写、孤注一掷成功/失败、SAN、奖励骰对抗战和重伤。脚本返回非零退出码表示发现错误。
@@ -61,7 +62,7 @@ python scripts/rules_playtest.py
 python scripts/self_play.py --scenario all --output-dir artifacts/playtests
 ```
 
-详细说明见 [docs/PLAYTESTING.md](docs/PLAYTESTING.md)。
+检索评测集位于 `evals/retrieval/the_haunting_v1.json`，固定基准报告位于 `artifacts/benchmarks/retrieval-benchmark.md`。详细说明见 [docs/PLAYTESTING.md](docs/PLAYTESTING.md)。
 
 ## 场景来源与版权边界
 

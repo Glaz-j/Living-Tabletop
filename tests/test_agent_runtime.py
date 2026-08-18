@@ -16,6 +16,7 @@ from living_tabletop.agent_runtime import (
 from living_tabletop.director import Director
 from living_tabletop.engine import GameEngine
 from living_tabletop.kernel import WorldKernel
+from living_tabletop.llm import LLMSettings, OpenAICompatibleLLM
 from living_tabletop.models import (
     ActionDefinition,
     ActionType,
@@ -208,6 +209,65 @@ def test_structured_knowledge_retrieval_is_scoped_to_addressee_and_topic():
     assert duration_with_planner_hints == []
     assert rewritten_children[0].fact_id == "f_macario_children_status"
     assert wrong_npc == []
+
+
+def test_compound_duration_question_does_not_disclose_an_unrelated_status_fact():
+    _scenario, state = _haunting_state()
+    query = KnowledgeQuery(
+        query_text=(
+            "询问马卡里奥一家在科比特宅邸居住的具体时长，"
+            "以及是否有其他前任住户曾遭遇过类似的精神崩溃或异常事件。"
+        ),
+        asker_id="player",
+        addressee_id="npc_knott",
+        subject_entity_ids=["loc_house_exterior", "npc_knott"],
+        predicate_hints=["tenancy_duration", "previous_incidents"],
+        max_results=3,
+    )
+
+    evidence = KnowledgeResolver().retrieve(state, query)
+    decision = DisclosurePolicy().decide(state, query, evidence)
+
+    assert evidence == []
+    assert decision.mode == "unknown"
+    assert decision.approved_evidence == []
+    assert "疗养院" not in decision.canonical_success
+
+
+def test_compound_question_can_answer_one_atom_and_keep_the_other_unknown():
+    _scenario, state = _haunting_state()
+    query = KnowledgeQuery.model_validate(
+        {
+            "query_text": "孩子去了哪里，他们在宅子里又住了多久？",
+            "asker_id": "player",
+            "addressee_id": "npc_knott",
+            "atoms": [
+                {
+                    "id": "children",
+                    "query_text": "孩子去了哪里",
+                    "subject_entity_ids": ["npc_gabriela"],
+                    "predicate_hints": ["children_status"],
+                    "relation_types": ["family", "location"],
+                },
+                {
+                    "id": "duration",
+                    "query_text": "他们在宅子里住了多久",
+                    "subject_entity_ids": ["loc_house_exterior"],
+                    "predicate_hints": ["tenancy_duration"],
+                    "relation_types": ["duration"],
+                },
+            ],
+            "max_results": 3,
+        }
+    )
+
+    evidence = KnowledgeResolver().retrieve(state, query)
+    decision = DisclosurePolicy().decide(state, query, evidence)
+
+    assert [item.fact_id for item in decision.approved_evidence] == ["f_macario_children_status"]
+    assert decision.answered_atom_ids == ["children"]
+    assert decision.unanswered_atom_ids == ["duration"]
+    assert "其余部分" in decision.canonical_success
 
 
 def test_disclosure_policy_distinguishes_automatic_check_and_unknown(scenario, state):
@@ -415,6 +475,39 @@ def test_director_hint_only_unlocks_a_checked_opportunity():
     assert action.skill == "research"
     assert action.success_effects[0].params["fact_id"] == "f_house_violent_history"
     assert all(effect.op != "reveal_fact" for effect in intervention.effects)
+
+
+def test_director_internal_justification_is_not_player_visible_and_once_survives_legacy_save():
+    scenario, state = _haunting_state()
+    kernel = WorldKernel(scenario)
+    director = Director(scenario, kernel)
+    internal_text = "科比特的意识覆盖整栋宅邸"
+    state.director.experience.success_streak = 3
+
+    first = director.decide(state)
+
+    assert first is not None
+    assert first.source_definition_id == "complication_corbitt_attention"
+    assert first.player_visible_text is None
+    assert internal_text in first.world_justification
+    first.source_definition_id = None  # Simulate an intervention loaded from an older save.
+    state.director.experience.success_streak = 3
+    second = director.decide(state)
+    assert second is None or internal_text not in second.world_justification
+
+    state = create_initial_state(scenario, seed=19)
+    state.director.experience.success_streak = 2
+    engine = GameEngine(
+        scenario,
+        OpenAICompatibleLLM(LLMSettings(enabled=False, api_key=None)),
+    )
+    resolved, resolution = engine.play(state, action_id="wait_and_listen")
+    assert resolution.director_intervention is not None
+    assert internal_text in resolution.director_intervention.world_justification
+    sequence = resolved.narrative_sequence
+    assert sequence is not None
+    assert all(internal_text not in beat.text for beat in sequence.beats)
+    assert (sequence.outcome_envelope or {}).get("director_opportunity") is None
 
 
 def test_grounding_validator_rejects_unapproved_fact_and_absent_character():

@@ -39,6 +39,7 @@
         ],
         "effects": [{"op":"mark_flag","params":{"key":"director_clue_opportunity","value":true,"visible":true}}],
         "world_justification": "安娜曾抄写死亡日期，副本是场景预设的冗余信息源。",
+        "player_visible_text": "安娜像是突然想起什么，从制服内袋里摸出一张折过数次的病历日期抄本。",
         "affected_entities": ["npc_anna", "f_records_pattern"]
       }
     ]
@@ -353,12 +354,14 @@
     {
       "id":"respite_anna_supplies","label":"安娜提供急救与短暂藏身处","requirements":[{"subject":"entity:npc_anna","predicate":"active","operator":"eq","value":true},{"subject":"player","predicate":"stress","operator":"gte","value":2}],
       "effects":[{"op":"modify_player","params":{"field":"stress","delta":-2}},{"op":"modify_player","params":{"field":"sanity","delta":1}},{"op":"modify_player","params":{"field":"hp","delta":1}}],
-      "world_justification":"安娜本就怀疑医院，并掌握一间可从内部反锁的配药室。"
+      "world_justification":"安娜本就怀疑医院，并掌握一间可从内部反锁的配药室。",
+      "player_visible_text":"安娜把你带进能够反锁的配药室，迅速处理伤口，又给了你几分钟不受打扰的喘息。"
     },
     {
       "id":"respite_anna_grounding","label":"在配药室重新确认现实","requirements":[{"subject":"entity:npc_anna","predicate":"active","operator":"eq","value":true},{"subject":"player","predicate":"sanity","operator":"lte","value":60}],
       "effects":[{"op":"modify_player","params":{"field":"sanity","delta":1}}],
-      "world_justification":"安娜用专业、具体的问答帮助你把注意力从圣咏拉回眼前可验证的事实。"
+      "world_justification":"安娜用专业、具体的问答帮助你把注意力从圣咏拉回眼前可验证的事实。",
+      "player_visible_text":"安娜用一连串具体问题让你复述眼前的人、门和药瓶，把注意力从远处圣咏拉回现实。"
     }
   ],
   "endings": [

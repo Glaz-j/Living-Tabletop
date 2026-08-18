@@ -284,6 +284,7 @@ class GameEngine:
                     evidence = self.knowledge_resolver.retrieve(working, query)
                     disclosure = self.disclosure_policy.decide(working, query, evidence)
                     open_plan = self.disclosure_policy.apply(open_plan, disclosure)
+                    open_plan.knowledge_query_text = query.query_text
                 validated = ValidatedActionPlan(
                     envelope=envelope,
                     open_plan=open_plan,
@@ -659,6 +660,9 @@ class GameEngine:
                 "approved_fact_ids": plan.approved_fact_ids,
                 "knowledge_source_id": plan.knowledge_source_id,
                 "disclosure_mode": plan.disclosure_mode,
+                "knowledge_query_text": plan.knowledge_query_text,
+                "answered_query_parts": plan.answered_query_parts,
+                "unanswered_query_parts": plan.unanswered_query_parts,
             },
             visible=True,
         )
@@ -1635,8 +1639,8 @@ class GameEngine:
                     )
 
         intervention = resolution.director_intervention
-        if intervention is not None and intervention.world_justification.strip():
-            raw_beats.append((intervention.world_justification.strip(), "director", True))
+        if intervention is not None and (intervention.player_visible_text or "").strip():
+            raw_beats.append((intervention.player_visible_text.strip(), "director", True))
 
         seen: set[str] = set()
         beats: list[NarrativeBeat] = []

@@ -53,7 +53,14 @@ Planner 输出契约中没有成功文本、失败文本、效果列表或事实
 
 `KnowledgeResolver` 只检索 `WorldState.facts` 与 `npc_knowledge`。它不会把 Narrator 的 prose 当作新事实，也不会因为语义相似而让 NPC 知道未写入其知识表的内容。
 
-`KnowledgeRetriever` 是稳定接口；V2 首版使用结构化过滤和轻量词法排序。以后可增加 semantic RAG，但 RAG 只能召回候选，不能直接授权披露。
+`KnowledgeRetriever` 是稳定接口。当前 `typed_hybrid_v2` 的流程是：
+
+1. 将复合问题拆成最多六个独立 `KnowledgeQueryAtom`；本地模型给出的未知关系标签会被丢弃。
+2. 先按 NPC 知情范围、实体、人物焦点、关系类型和历史范围做硬过滤。
+3. 对剩余事实计算中文二/三元组 BM25 与结构化得分，并用 RRF 融合排名。
+4. `DisclosurePolicy` 按 atom 选证据；未被事实覆盖的 atom 保留为 unknown，不能借相近事实补答。
+
+检索保持纯 CPU、无额外模型依赖。以后可增加 semantic RAG，但向量或长文档检索只能补充候选，不能绕过类型过滤和披露授权。固定 eval set 与基准报告分别位于 `evals/retrieval/the_haunting_v1.json` 和 `artifacts/benchmarks/retrieval-benchmark.md`。
 
 ### 4. 披露是规则决策
 
@@ -68,7 +75,7 @@ Planner 输出契约中没有成功文本、失败文本、效果列表或事实
 
 ### 5. Director 只制造机会
 
-Director 可以改变可见机会、时间压力、威胁和可供选择的 affordance；不能把“可调查的便笺”直接升级为“玩家已经得出结论”。
+Director 可以改变可见机会、时间压力、威胁和可供选择的 affordance；不能把“可调查的便笺”直接升级为“玩家已经得出结论”。`world_justification` 只供开发者审计；只有显式 `player_visible_text` 能进入玩家演出和 Narrator 的 OutcomeEnvelope。
 
 `open__*` 不是偏离主线的证据。只有进入标记为 `off_main` 的场景并继续在该支线活动，才会影响偏离遥测。
 
