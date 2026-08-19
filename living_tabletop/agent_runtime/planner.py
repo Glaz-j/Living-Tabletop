@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import logging
 import re
 
-from ..harness import StructuredHarness, strict_json_schema
+from ..harness import HarnessValidationError, StructuredHarness, strict_json_schema
 from ..llm import LLMUnavailable, OpenAICompatibleLLM, record_agent_call
 from ..models import ActionDefinition, ActionType, ScenarioDefinition, WorldState
 from .context import ContextAssembler
 from .contracts import KnowledgeQuery, PlayerIntentEnvelope, TurnPlannerDecision
 from .validation import PlanValidator
+
+
+logger = logging.getLogger(__name__)
 
 
 class TurnPlanner:
@@ -61,6 +65,7 @@ class TurnPlanner:
             "你是 Living Tabletop 的 TurnPlanner，只负责理解玩家这一轮想做什么。"
             "玩家可以尝试任何行动，也可以永久离开预设主线；不要因为动作不在按钮列表中而拒绝。"
             "疑问句通常是 TALK，不是调查、说服或试探；普通闲聊通常 automatic。"
+            "询问某地点在哪里、怎么走或是否存在，只是提问，不授权 MOVE；只有玩家明确说要去、前往、出发、返回或离开时才能 MOVE。"
             "只有结果存在真实不确定性或对方明确抵抗时才选择 check；物理上不可能的结果选择 impossible，仍接受这次尝试。"
             "若玩家向在场 NPC 询问事实，输出 speech_act=question、addressee_id、referents 和 KnowledgeQuery。"
             "KnowledgeQuery 只描述要查什么，不得猜测答案或 fact_id；复合问题必须按语义拆成 atoms，"
@@ -102,6 +107,31 @@ class TurnPlanner:
                 validation="accepted",
             )
             return decision, context
+        except HarnessValidationError as exc:
+            record_agent_call(
+                state,
+                role="turn_planner",
+                result=None,
+                validation="rejected",
+                error=True,
+            )
+            logger.warning("TurnPlanner output failed the safety contract after repair: %s", exc)
+            raise LLMUnavailable(
+                "LLM returned an invalid action plan",
+                public_message=(
+                    "模型服务已经响应，但行动计划在自动修复后仍未通过安全校验。"
+                    "行动未提交，游戏状态没有改变；请重新提交或换一种说法。"
+                ),
+            ) from exc
+        except LLMUnavailable:
+            record_agent_call(
+                state,
+                role="turn_planner",
+                result=None,
+                validation="rejected",
+                error=True,
+            )
+            raise
         except Exception as exc:
             record_agent_call(
                 state,
@@ -110,8 +140,10 @@ class TurnPlanner:
                 validation="rejected",
                 error=True,
             )
+            logger.exception("TurnPlanner failed unexpectedly")
             raise LLMUnavailable(
                 "LLM could not plan the player's action",
-                public_message=getattr(exc, "public_message", None),
-                failures=getattr(exc, "failures", None),
+                public_message=(
+                    "行动理解模块处理失败，行动未提交，游戏状态没有改变。请稍后重试。"
+                ),
             ) from exc

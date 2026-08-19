@@ -10,13 +10,15 @@ from living_tabletop.agent_runtime import (
     KnowledgeResolver,
     OutcomeEnvelope,
     PlanValidator,
+    PlanValidationError,
     PlayerIntentEnvelope,
     TurnPlannerDecision,
 )
+import pytest
 from living_tabletop.director import Director
 from living_tabletop.engine import GameEngine
 from living_tabletop.kernel import WorldKernel
-from living_tabletop.llm import LLMSettings, OpenAICompatibleLLM
+from living_tabletop.llm import LLMSettings, LLMUnavailable, OpenAICompatibleLLM
 from living_tabletop.models import (
     ActionDefinition,
     ActionType,
@@ -154,6 +156,167 @@ def test_plan_validator_removes_hallucinated_referent_and_fact_ids():
     assert validated.open_plan.referents[0].entity_id is None
     assert validated.open_plan.knowledge_query.subject_entity_ids == []
     assert validated.open_plan.knowledge_query.explicit_fact_ids == []
+
+
+def test_question_about_a_destination_does_not_authorize_movement():
+    scenario, state = _haunting_state()
+    text = "疗养院在什么地方？"
+    envelope = PlayerIntentEnvelope(
+        id="intent_location_question",
+        source="free_text",
+        text=text,
+        actor_id="player",
+        scene_id="loc_cafe",
+    )
+    decision = TurnPlannerDecision.model_validate(
+        {
+            "existing_action_id": None,
+            "open_plan": {
+                "label": "前往罗克斯伯里疗养院",
+                "action_type": "MOVE",
+                "goal": text,
+                "destination_name": "罗克斯伯里疗养院",
+                "destination_entity_id": "loc_sanitarium",
+            },
+        }
+    )
+
+    with pytest.raises(PlanValidationError, match="explicit movement commitment"):
+        PlanValidator().validate(
+            state,
+            envelope,
+            decision,
+            WorldKernel(scenario).available_actions(state),
+        )
+
+
+def test_repeated_unsafe_move_plan_is_reported_as_validation_not_connectivity():
+    scenario, state = _haunting_state()
+    text = "疗养院在什么地方？"
+    llm = PlannerLLM(
+        {
+            "existing_action_id": None,
+            "confidence": 1,
+            "open_plan": {
+                "label": "前往罗克斯伯里疗养院",
+                "action_type": "MOVE",
+                "goal": text,
+                "destination_name": "罗克斯伯里疗养院",
+                "destination_entity_id": "loc_sanitarium",
+            },
+        }
+    )
+    engine = GameEngine(scenario, llm)
+
+    with pytest.raises(LLMUnavailable) as captured:
+        engine.play(state, text=text)
+
+    assert len(llm.calls) == 2
+    assert "安全校验" in captured.value.public_message
+    assert "无法连接" not in captured.value.public_message
+    assert state.entities["player"].location == "loc_cafe"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "我现在去疗养院。",
+        "再去一次疗养院",
+        "沿危险楼梯下到地下室",
+        "我回咖啡馆",
+        "转身离开病房",
+        "疗养院在哪里？告诉我地址，我现在就过去。",
+    ],
+)
+def test_explicit_movement_commitment_authorizes_location_change(text):
+    assert PlanValidator.movement_commitment_evidence(text) is not None
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "疗养院在哪里？",
+        "疗养院怎么去？",
+        "我能去疗养院吗？",
+        "我想先问问怎么去疗养院。",
+    ],
+)
+def test_location_mentions_and_permission_questions_are_not_commitments(text):
+    assert PlanValidator.movement_commitment_evidence(text) is None
+
+
+def test_validator_preserves_server_owned_player_text_without_rejecting_punctuation_normalization():
+    scenario, state = _haunting_state()
+    original = "他们 都是谁来着?"
+    envelope = PlayerIntentEnvelope(
+        id="intent_goal_normalization",
+        source="free_text",
+        text=original,
+        actor_id="player",
+        scene_id="loc_cafe",
+    )
+    decision = TurnPlannerDecision.model_validate(
+        {
+            "existing_action_id": None,
+            "open_plan": {
+                "label": "询问身份",
+                "action_type": "TALK",
+                "goal": "他们都是谁来着？",
+                "target_entity_id": "npc_knott",
+                "addressee_id": "npc_knott",
+                "speech_act": "question",
+            },
+        }
+    )
+
+    validated = PlanValidator().validate(
+        state,
+        envelope,
+        decision,
+        WorldKernel(scenario).available_actions(state),
+    )
+
+    assert validated.open_plan.goal == original
+
+
+def test_composite_addressee_is_normalized_to_a_present_referenced_npc():
+    scenario, state = _haunting_state()
+    state.entities["player"].location = "loc_sanitarium"
+    text = "加布里埃拉和维托里奥都是谁？"
+    envelope = PlayerIntentEnvelope(
+        id="intent_composite_addressee",
+        source="free_text",
+        text=text,
+        actor_id="player",
+        scene_id="loc_sanitarium",
+    )
+    decision = TurnPlannerDecision.model_validate(
+        {
+            "existing_action_id": None,
+            "open_plan": {
+                "label": "询问两人的身份",
+                "action_type": "TALK",
+                "goal": text,
+                "target_entity_id": "npc_gabriela,npc_vittorio",
+                "addressee_id": "npc_gabriela,npc_vittorio",
+                "speech_act": "question",
+                "referents": [
+                    {"mention": "加布里埃拉", "entity_id": "npc_gabriela", "confidence": 1},
+                    {"mention": "维托里奥", "entity_id": "npc_vittorio", "confidence": 1},
+                ],
+            },
+        }
+    )
+
+    validated = PlanValidator().validate(
+        state,
+        envelope,
+        decision,
+        WorldKernel(scenario).available_actions(state),
+    )
+
+    assert validated.open_plan.addressee_id == "npc_gabriela"
+    assert validated.open_plan.target_entity_id == "npc_gabriela"
 
 
 def test_structured_knowledge_retrieval_is_scoped_to_addressee_and_topic():

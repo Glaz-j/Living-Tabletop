@@ -719,6 +719,24 @@ class GameEngine:
         text: str | None,
         interactive_rules: bool,
     ) -> tuple[WorldState, ActionResolution]:
+        movement_requested = plan.action_type in {ActionType.MOVE, ActionType.ESCAPE} or bool(
+            plan.destination_name or plan.destination_entity_id
+        )
+        if (
+            movement_requested
+            and self.plan_validator.movement_commitment_evidence(intent.content or plan.goal) is None
+        ):
+            # Defense in depth: even a malformed/replayed open plan cannot mutate
+            # location unless the player's own text explicitly authorizes movement.
+            clarification = "你只是提到了这个地点，并没有明确决定动身；本轮没有移动。"
+            return state, ActionResolution(
+                accepted=False,
+                needs_clarification=True,
+                clarification=clarification,
+                narrative_seed=clarification,
+                state_version=state.version,
+            )
+
         if plan.resolution == "check":
             destination_id = self._resolve_destination(state, plan)
             current_id = state.entities[state.player.entity_id].location

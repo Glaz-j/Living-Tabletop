@@ -39,6 +39,7 @@ def test_local_settings_default_to_ollama(monkeypatch):
     assert settings.model == "qwen3.5:9b-q4_K_M"
     assert settings.reasoning_effort == "none"
     assert settings.context_window == 8192
+    assert settings.max_retries == 1
 
 
 def test_json_parser_accepts_fenced_object():
@@ -138,6 +139,78 @@ def test_local_ollama_native_request_enforces_context_window():
     assert native.payload["options"]["num_ctx"] == 8192
     assert native.payload["format"] == schema
     assert native.payload["think"] is False
+
+
+def test_local_ollama_retries_a_transient_transport_failure_without_opening_circuit():
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"message": {"content": '{"ok":true}'}}
+
+    class NativeClient:
+        def __init__(self):
+            self.calls = 0
+
+        def post(self, _url, *, json):
+            self.calls += 1
+            if self.calls == 1:
+                raise TimeoutError("transient local timeout")
+            return Response()
+
+    client = OpenAICompatibleLLM(
+        LLMSettings(
+            enabled=True,
+            api_key="ollama",
+            base_url="http://127.0.0.1:11434/v1",
+            model="qwen3.5:9b-q4_K_M",
+            max_retries=1,
+            retry_delay_seconds=0,
+        ),
+        provider="local",
+    )
+    native = NativeClient()
+    client._native_client = native
+
+    result = client.complete_json(system="json", user_payload={})
+
+    assert result.data == {"ok": True}
+    assert native.calls == 2
+    assert client.enabled is True
+
+
+def test_invalid_local_model_json_does_not_masquerade_as_a_connection_outage():
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"message": {"content": "not-json"}}
+
+    class NativeClient:
+        def post(self, _url, *, json):
+            return Response()
+
+    client = OpenAICompatibleLLM(
+        LLMSettings(
+            enabled=True,
+            api_key="ollama",
+            base_url="http://127.0.0.1:11434/v1",
+            model="qwen3.5:9b-q4_K_M",
+            cooldown_seconds=60,
+            max_retries=1,
+            retry_delay_seconds=0,
+        ),
+        provider="local",
+    )
+    client._native_client = NativeClient()
+
+    with pytest.raises(ValueError):
+        client.complete_json(system="json", user_payload={})
+
+    assert client.enabled is True
+    assert client.last_error == "模型没有返回有效的结构化结果"
 
 
 class FakeLLM:

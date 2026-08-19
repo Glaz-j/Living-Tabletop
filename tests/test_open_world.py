@@ -94,6 +94,33 @@ def test_open_world_action_replay_is_deterministic(tmp_path):
     assert verified, (expected, actual)
 
 
+def test_recorded_move_plan_cannot_move_without_player_commitment():
+    _scenario, engine, state = _haunting_engine_and_state()
+    origin = state.entities["player"].location
+    time_before = state.world_time
+    plan = OpenActionPlan(
+        label="前往罗克斯伯里疗养院",
+        action_type=ActionType.MOVE,
+        goal="疗养院在什么地方？",
+        destination_name="罗克斯伯里疗养院",
+        destination_entity_id="loc_sanitarium",
+        duration_minutes=15,
+        success_text="你抵达疗养院。",
+    )
+
+    resolved, resolution = engine.play(
+        state,
+        text="疗养院在什么地方？",
+        recorded_open_plan=plan,
+    )
+
+    assert resolution.accepted is False
+    assert resolution.needs_clarification is True
+    assert resolved.entities["player"].location == origin
+    assert resolved.world_time == time_before
+    assert not any(event.type == "entity_moved" for event in resolved.event_log)
+
+
 def test_open_skill_check_keeps_coc_rule_choices_and_replays(tmp_path):
     scenario = load_scenario()
     llm = OpenAICompatibleLLM(LLMSettings(enabled=False, api_key=None))

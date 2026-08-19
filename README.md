@@ -23,11 +23,11 @@ Copy-Item .env.example .env
 ```
 
 应用不会把密钥或完整模型输入写入普通日志。存档中的开发观察记录会保留通过校验的结构化决策、调用角色、状态版本、耗时和 token 用量，用于确定性回放。
-模型网关遇到连接超时、限流或 5xx 时会做一次短重试；仍失败则使用确定性 KP 降级，并短暂打开熔断器，避免玩家行动卡死。
+模型网关遇到连接超时、限流或 5xx 时会做一次短重试；仍失败才短暂打开对应提供方的熔断器。模型已经返回、但 JSON 或行动计划校验失败时由 Harness 修复一次，不会被误记成网络断开，也不会触发 Ollama 熔断；前端会区分“模型不可达”和“模型输出未通过安全校验”。
 
 ## V2 Agent Runtime 与本地 Harness
 
-TurnPlanner 与 Narrator 的模型输出会经过轻量原生 Harness：优先请求严格 JSON Schema，使用 Pydantic 校验结构及运行时约束；首次结果不合法时携带精确错误修复一次。TurnPlanner 只输出动作、对话行为、指代和知识查询，不能输出结果 prose 或 effects；Harness 不直接修改 World State，也不限制玩家输入。
+TurnPlanner 与 Narrator 的模型输出会经过轻量原生 Harness：优先请求严格 JSON Schema，使用 Pydantic 校验结构及运行时约束；首次结果不合法时携带精确错误修复一次。TurnPlanner 只输出动作、对话行为、指代和知识查询，不能输出结果 prose 或 effects；Harness 不直接修改 World State，也不限制玩家输入。玩家原文由服务器持有，模型对空格或标点的正规化不会导致误报；涉及位置变化的自由输入必须包含玩家原文中的明确移动承诺，单纯询问或提及地点不能授权移动，效果层还会再次执行同一不变量。
 
 NPC 问答使用 `KnowledgeResolver → DisclosurePolicy → WorldKernel`：Planner 先把复合问题拆成可独立回答的 atoms，Resolver 再用关系类型、实体范围、中文 BM25 与 RRF 做轻量混合召回。只有覆盖对应 atom、且确实存在于 NPC 结构化知识表中的事实才能被披露；未覆盖部分会明确保留未知。披露事件携带 `fact_id` 和来源 NPC。每轮 `TurnTrace` 会保存输入、上下文摘要、Planner、分项证据、披露、Kernel 事件、状态差异、Outcome 与 grounding 结果，且仅在开发者视图中出现。完整设计见 [docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md)。
 

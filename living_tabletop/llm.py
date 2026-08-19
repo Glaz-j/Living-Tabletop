@@ -94,7 +94,7 @@ class LLMSettings(BaseModel):
             enabled=raw_enabled in {"1", "true", "yes", "on"},
             timeout_seconds=float(os.getenv("LIVING_TABLETOP_LOCAL_LLM_TIMEOUT", "60")),
             cooldown_seconds=float(os.getenv("LIVING_TABLETOP_LOCAL_LLM_COOLDOWN", "15")),
-            max_retries=max(0, int(os.getenv("LIVING_TABLETOP_LOCAL_LLM_MAX_RETRIES", "0"))),
+            max_retries=max(0, int(os.getenv("LIVING_TABLETOP_LOCAL_LLM_MAX_RETRIES", "1"))),
             retry_delay_seconds=max(
                 0.0,
                 float(os.getenv("LIVING_TABLETOP_LOCAL_LLM_RETRY_DELAY", "0.1")),
@@ -162,8 +162,17 @@ class OpenAICompatibleLLM:
         return self._client
 
     @staticmethod
-    def _safe_error(error: Exception) -> str:
+    def _status_code(error: Exception) -> int | None:
         status_code = getattr(error, "status_code", None)
+        if isinstance(status_code, int):
+            return status_code
+        response = getattr(error, "response", None)
+        response_status = getattr(response, "status_code", None)
+        return response_status if isinstance(response_status, int) else None
+
+    @classmethod
+    def _safe_error(cls, error: Exception) -> str:
+        status_code = cls._status_code(error)
         message = str(error).lower()
         if status_code == 404 and ("model" in message or "not_found" in message):
             return "所选模型当前没有可用推理渠道"
@@ -235,9 +244,9 @@ class OpenAICompatibleLLM:
             "last_success_at": self.last_success_at,
         }
 
-    @staticmethod
-    def _is_retryable(error: Exception) -> bool:
-        status_code = getattr(error, "status_code", None)
+    @classmethod
+    def _is_retryable(cls, error: Exception) -> bool:
+        status_code = cls._status_code(error)
         if status_code in {408, 409, 429}:
             return True
         if isinstance(status_code, int) and 500 <= status_code <= 599:
@@ -416,9 +425,26 @@ class OpenAICompatibleLLM:
 
         native_url = f"{self.settings.base_url.rstrip('/')[:-3]}/api/chat"
         started = time.perf_counter()
+        response = None
+        for retry_index in range(self.settings.max_retries + 1):
+            try:
+                response = self._native_client.post(native_url, json=payload)
+                response.raise_for_status()
+                break
+            except Exception as error:
+                retryable = self._is_retryable(error)
+                if retryable and retry_index < self.settings.max_retries:
+                    delay = self.settings.retry_delay_seconds * (2**retry_index)
+                    if delay:
+                        time.sleep(delay)
+                    continue
+                if retryable:
+                    self._circuit_open_until = time.monotonic() + self.settings.cooldown_seconds
+                self._record_failure(error)
+                raise
+
+        assert response is not None
         try:
-            response = self._native_client.post(native_url, json=payload)
-            response.raise_for_status()
             raw = response.json()
             content = raw.get("message", {}).get("content", "{}")
             result = LLMResult(
@@ -428,7 +454,8 @@ class OpenAICompatibleLLM:
                 output_tokens=raw.get("eval_count"),
             )
         except Exception as error:
-            self._circuit_open_until = time.monotonic() + self.settings.cooldown_seconds
+            # The model was reachable. Invalid JSON is repaired by StructuredHarness
+            # and must not masquerade as a connection outage or open the circuit.
             self._record_failure(error)
             raise
         self.last_error = None

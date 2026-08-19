@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import re
 
 from ..models import ActionDefinition, ActionType, OpenActionPlan, WorldState
 from .contracts import PlayerIntentEnvelope, TurnPlannerDecision
@@ -12,6 +13,43 @@ class PlanValidationError(ValueError):
 
 class PlanValidator:
     """Rejects invented authority while preserving the player's literal intent."""
+
+    _QUESTION_MARKERS = re.compile(r"[?？]|(?:什么|怎么|为何|为什么|哪里|哪儿|谁|多久|多少|吗|呢)")
+    _MOVEMENT_COMMITMENT = re.compile(
+        r"(?:^|[，。；！？!?、\s]|然后|接着|随后)"
+        r"(?P<evidence>"
+        r"(?:我|我们)?(?:现在|马上|立刻|这就|就|先|再|重新|直接|准备|决定|打算|计划|想|要){0,4}"
+        r"(?:前往|过去|走过去|出发去|赶往|返回|回到|回家|回(?=[^答复忆想头顾声报避])|"
+        r"离开|进入|进去|进到|走进|走出|上楼|下楼|下到|上去|下去|登上|穿过|走到|移动到|"
+        r"逃离|逃跑|撤离|到(?!底|处|时|期)|去(?!年|世|除|掉|向))"
+        r"[^，。；！？!?]{0,80}"
+        r"|(?:沿|顺着)[^，。；！？!?]{1,30}(?:走|进入|上到|下到|上楼|下楼)[^，。；！？!?]{0,50}"
+        r"|(?:往|向)[^，。；！？!?]{1,30}(?:走|去|出发)[^，。；！？!?]{0,50}"
+        r"|转身(?:离开|走出)[^，。；！？!?]{0,50}"
+        r"|(?:带我|送我)(?:去|到)[^，。；！？!?]{0,80}"
+        r"|(?:go|leave|return|travel|head)(?:\s+to)?\s+[^,.!?;]{1,80}"
+        r")",
+        re.IGNORECASE,
+    )
+
+    @classmethod
+    def movement_commitment_evidence(cls, text: str) -> str | None:
+        """Return the player's explicit authorization to change location, if any.
+
+        Mentioning a destination or asking how to reach it is not authorization. For
+        mixed utterances that contain a question and an action, require a first-person
+        or imperative commitment in the action clause.
+        """
+
+        question_like = bool(cls._QUESTION_MARKERS.search(text))
+        for match in cls._MOVEMENT_COMMITMENT.finditer(text):
+            evidence = match.group("evidence").strip()
+            if question_like and not re.search(r"我|我们|带我|送我|\bI\b|\bwe\b", evidence, re.I):
+                continue
+            if re.search(r"(?:能不能|可不可以|是否|能否|可以吗|要不要).{0,12}(?:去|前往|过去|离开)", evidence):
+                continue
+            return evidence
+        return None
 
     def validate(
         self,
@@ -31,8 +69,20 @@ class PlanValidator:
         plan = deepcopy(decision.open_plan)
         if plan is None:
             raise PlanValidationError("planner omitted open plan")
-        if plan.goal.strip() != envelope.text.strip():
-            raise PlanValidationError("open plan goal must exactly preserve player text")
+        # The player text is server-owned authority. Models commonly normalize
+        # whitespace or ?/？ even when instructed to copy verbatim; rejecting that
+        # harmless formatting change caused false "LLM connectivity" failures.
+        plan.goal = envelope.text
+
+        movement_requested = plan.action_type in {ActionType.MOVE, ActionType.ESCAPE} or (
+            plan.action_type == ActionType.REST
+            and bool(plan.destination_name or plan.destination_entity_id)
+        )
+        if movement_requested and self.movement_commitment_evidence(envelope.text) is None:
+            raise PlanValidationError(
+                "location change requires an explicit movement commitment in the player's text; "
+                "a question or destination mention alone is not authorization"
+            )
 
         allowed_skills = {*state.player.skills, *state.player.characteristics, "luck"}
         if plan.skill not in allowed_skills:
@@ -59,7 +109,19 @@ class PlanValidator:
                 if len(present_npcs) == 1:
                     addressee_id = present_npcs[0]
             if addressee_id is not None and addressee_id not in present_ids:
-                raise PlanValidationError("dialogue addressee is not present")
+                # Small local models sometimes concatenate two valid ids into one
+                # invalid addressee. Preserve both as query subjects, but address the
+                # first explicitly referenced NPC who is actually present.
+                referenced_present_npcs = [
+                    referent.entity_id
+                    for referent in plan.referents
+                    if referent.entity_id in present_ids
+                    and state.entities[referent.entity_id].type.value == "NPC"
+                ]
+                if plan.speech_act == "question" and referenced_present_npcs:
+                    addressee_id = referenced_present_npcs[0]
+                else:
+                    raise PlanValidationError("dialogue addressee is not present")
             plan.addressee_id = addressee_id
             plan.target_entity_id = addressee_id
             plan.referents = [
