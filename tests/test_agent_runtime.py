@@ -270,7 +270,7 @@ def test_question_about_a_destination_does_not_authorize_movement():
         )
 
 
-def test_repeated_unsafe_move_plan_is_reported_as_validation_not_connectivity():
+def test_unsafe_move_metadata_is_downgraded_without_losing_the_turn():
     scenario, state = _haunting_state()
     text = "疗养院在什么地方？"
     llm = PlannerLLM(
@@ -288,13 +288,14 @@ def test_repeated_unsafe_move_plan_is_reported_as_validation_not_connectivity():
     )
     engine = GameEngine(scenario, llm)
 
-    with pytest.raises(LLMUnavailable) as captured:
-        engine.play(state, text=text)
+    resolved, resolution = engine.play(state, text=text)
 
-    assert len(llm.calls) == 2
-    assert "安全校验" in captured.value.public_message
-    assert "无法连接" not in captured.value.public_message
-    assert state.entities["player"].location == "loc_cafe"
+    assert len(llm.calls) == 1
+    assert resolution.accepted is True
+    assert resolved.entities["player"].location == state.entities["player"].location
+    assert resolved.turn_traces[-1]["composition"] is not None
+    assert resolved.agent_calls[-1].role == "turn_composer"
+    assert resolved.agent_calls[-1].validation == "fallback"
 
 
 @pytest.mark.parametrize(
@@ -1196,7 +1197,7 @@ def test_physical_action_with_addressed_question_also_gets_npc_reply():
         dialogue_output["beats"][0],
     ]
     assert [call.get("schema_name") for call in llm.calls] == [
-        "TurnPlannerDecision",
+        "TurnCompositionOutput",
         "DialogueTurnOutput",
     ]
 

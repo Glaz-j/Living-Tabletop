@@ -16,6 +16,7 @@ from .agent_runtime import (
     OutcomeBuilder,
     PlanValidator,
     PlayerIntentEnvelope,
+    TurnComposer,
     TurnPlanner,
     TurnTrace,
     ValidatedActionPlan,
@@ -55,6 +56,7 @@ class GameEngine:
         self.rules = RuleEngine()
         self.llm = llm or OpenAICompatibleLLM()
         self.turn_planner = TurnPlanner(self.llm, scenario)
+        self.turn_composer = TurnComposer(self.llm, scenario)
         self.plan_validator = PlanValidator()
         self.knowledge_resolver = KnowledgeResolver()
         self.disclosure_policy = DisclosurePolicy()
@@ -142,6 +144,11 @@ class GameEngine:
             dialogue=(
                 validated.dialogue.model_dump(mode="json")
                 if validated.dialogue
+                else None
+            ),
+            composition=(
+                validated.composition.model_dump(mode="json")
+                if validated.composition
                 else None
             ),
             action_id=action_id,
@@ -257,11 +264,13 @@ class GameEngine:
             )
         elif intent.action_id is None and intent.source == "player_text":
             envelope = self._intent_envelope(working, text=text)
-            decision, assembled_context = self.turn_planner.plan(
+            composed = self.turn_composer.compose(
                 working,
                 envelope,
                 available_actions,
             )
+            decision = composed.decision
+            assembled_context = composed.context
             context_summary = ContextAssembler.trace_summary(assembled_context)
             if decision.existing_action_id is not None:
                 action = self._actions[decision.existing_action_id]
@@ -269,6 +278,7 @@ class GameEngine:
                     envelope=envelope,
                     existing_action_id=action.id,
                     planner_output=decision.model_dump(mode="json"),
+                    composition=composed.composition,
                 )
                 intent = ActionIntent(
                     action_id=action.id,
@@ -282,43 +292,47 @@ class GameEngine:
             else:
                 planned = decision.open_plan
                 if planned is None:
-                    raise ValueError("TurnPlanner omitted open plan")
-                open_plan = self.plan_validator.materialize(decision)
+                    raise ValueError("Turn Composer omitted open plan")
                 evidence = []
                 disclosure = None
-                query = planned.knowledge_query
-                if query is not None:
-                    evidence = self.knowledge_resolver.retrieve(working, query)
-                    disclosure = self.disclosure_policy.decide(working, query, evidence)
-                    open_plan = self.disclosure_policy.apply(open_plan, disclosure)
-                    open_plan.knowledge_query_text = query.query_text
                 dialogue = None
-                has_dialogue_clause = bool(
-                    planned.action_type in {ActionType.TALK, ActionType.DECEIVE}
-                    or (
-                        planned.addressee_id
-                        and planned.speech_act != "none"
+                query = planned.knowledge_query
+                if composed.legacy:
+                    # Compatibility for recorded V1 planner output and old test
+                    # fixtures. A valid V2 Composer response never enters here.
+                    open_plan = self.plan_validator.materialize(decision)
+                    if query is not None:
+                        evidence = self.knowledge_resolver.retrieve(working, query)
+                        disclosure = self.disclosure_policy.decide(working, query, evidence)
+                        open_plan = self.disclosure_policy.apply(open_plan, disclosure)
+                        open_plan.knowledge_query_text = query.query_text
+                    has_dialogue_clause = bool(
+                        planned.action_type in {ActionType.TALK, ActionType.DECEIVE}
+                        or (planned.addressee_id and planned.speech_act != "none")
                     )
-                )
-                if has_dialogue_clause:
-                    dialogue = self.dialogue_agent.compose(
-                        working,
-                        envelope=envelope,
-                        planned=planned,
-                        plan=open_plan,
-                        context=assembled_context,
-                        query=query,
-                        evidence=evidence,
-                        disclosure=disclosure,
-                    )
-                    speaker_id = planned.addressee_id or planned.target_entity_id
-                    if speaker_id:
-                        open_plan = self.dialogue_agent.apply(
+                    if has_dialogue_clause:
+                        dialogue = self.dialogue_agent.compose(
                             working,
-                            open_plan,
-                            dialogue,
-                            speaker_id=speaker_id,
+                            envelope=envelope,
+                            planned=planned,
+                            plan=open_plan,
+                            context=assembled_context,
+                            query=query,
+                            evidence=evidence,
+                            disclosure=disclosure,
                         )
+                        speaker_id = planned.addressee_id or planned.target_entity_id
+                        if speaker_id:
+                            open_plan = self.dialogue_agent.apply(
+                                working,
+                                open_plan,
+                                dialogue,
+                                speaker_id=speaker_id,
+                            )
+                else:
+                    open_plan = composed.open_plan
+                    if open_plan is None:
+                        raise ValueError("Turn Composer did not materialize its open plan")
                 validated = ValidatedActionPlan(
                     envelope=envelope,
                     open_plan=open_plan,
@@ -327,6 +341,7 @@ class GameEngine:
                     evidence=evidence,
                     disclosure=disclosure,
                     dialogue=dialogue,
+                    composition=composed.composition,
                 )
                 intent = ActionIntent(
                     action_id=None,
@@ -637,9 +652,11 @@ class GameEngine:
         ]
         generated_fact_effects: list[Effect] = []
         for fact in plan.generated_facts:
-            generated_fact_effects.extend(
-                [
-                    Effect(op="create_fact", params={"fact": fact.model_dump(mode="json")}),
+            generated_fact_effects.append(
+                Effect(op="create_fact", params={"fact": fact.model_dump(mode="json")})
+            )
+            if plan.knowledge_source_id is not None:
+                generated_fact_effects.append(
                     Effect(
                         op="add_npc_knowledge",
                         params={
@@ -648,9 +665,8 @@ class GameEngine:
                             "confidence": 1.0,
                             "source": fact.source,
                         },
-                    ),
-                ]
-            )
+                    )
+                )
         return ActionDefinition(
             id=f"open__{digest}",
             label=plan.label,

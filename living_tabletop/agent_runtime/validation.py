@@ -31,6 +31,12 @@ class PlanValidator:
         r")",
         re.IGNORECASE,
     )
+    _STAY_IN_SCENE = re.compile(
+        r"(?:仍|还|继续)?(?:留|待)在(?:这里|原地|当前|房间|屋里|现场|咖啡馆)|"
+        r"不(?:会|要|打算)?离开|不出门|只是走到(?:窗边|桌边|门边|角落)|"
+        r"without leaving|stay(?:ing)? here|remain(?:ing)? in (?:the )?(?:room|scene)",
+        re.IGNORECASE,
+    )
 
     @classmethod
     def movement_commitment_evidence(cls, text: str) -> str | None:
@@ -78,6 +84,10 @@ class PlanValidator:
             plan.action_type == ActionType.REST
             and bool(plan.destination_name or plan.destination_entity_id)
         )
+        if movement_requested and self._STAY_IN_SCENE.search(envelope.text):
+            raise PlanValidationError(
+                "the player explicitly remains in the current scene; local posture is not MOVE"
+            )
         if movement_requested and self.movement_commitment_evidence(envelope.text) is None:
             raise PlanValidationError(
                 "location change requires an explicit movement commitment in the player's text; "

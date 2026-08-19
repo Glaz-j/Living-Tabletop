@@ -500,7 +500,7 @@ class PendingCheck(DomainModel):
 class AgentCallRecord(DomainModel):
     id: str
     role: Literal[
-        "action_interpreter", "keeper", "turn_planner", "dialogue", "director", "narrator"
+        "action_interpreter", "keeper", "turn_planner", "turn_composer", "dialogue", "director", "narrator"
     ]
     input_state_version: int
     output_digest: str

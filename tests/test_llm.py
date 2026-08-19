@@ -510,7 +510,7 @@ def test_follow_up_question_cannot_be_keyword_routed_to_false_ending():
     assert started.payload["intent_source"] == "llm"
     false_report_context = next(
         item
-        for item in llm.calls[0]["user_payload"]["available_actions"]
+        for item in llm.calls[0]["user_payload"]["context"]["available_actions"]
         if item["id"] == "cafe_false_report"
     )
     assert false_report_context["requires_explicit_intent"] is True

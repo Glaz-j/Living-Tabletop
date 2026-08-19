@@ -114,6 +114,12 @@ class AssembledTurnContext(RuntimeModel):
     inventory: list[dict[str, Any]] = Field(default_factory=list)
     capabilities: dict[str, Any] = Field(default_factory=dict)
     available_actions: list[dict[str, Any]] = Field(default_factory=list)
+    # V2 keeps the recent transcript as the primary conversational memory, then
+    # supplements it with bounded, player-safe world knowledge.  These fields are
+    # deliberately descriptive rather than a lossy intent ontology.
+    hard_state: dict[str, Any] = Field(default_factory=dict)
+    referenced_entities: list[dict[str, Any]] = Field(default_factory=list)
+    present_npc_knowledge: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class EvidenceCandidate(RuntimeModel):
@@ -207,6 +213,33 @@ class DialogueTurnOutput(RuntimeModel):
         return beats
 
 
+class TurnCompositionOutput(RuntimeModel):
+    """One foreground model result: interpretation and complete performance.
+
+    The world kernel owns effects.  The composer may only select an authored
+    action or propose an open action plus low-stakes facts.  For a mechanical
+    check it writes both branches up front; only the branch selected by the
+    deterministic rule engine is ever shown.
+    """
+
+    decision: TurnPlannerDecision
+    performance: list[str] = Field(min_length=1, max_length=5)
+    failure_performance: list[str] = Field(default_factory=list, max_length=4)
+    used_fact_ids: list[str] = Field(default_factory=list, max_length=12)
+    proposed_facts: list[SoftFactProposal] = Field(default_factory=list, max_length=6)
+    answered_query_parts: list[str] = Field(default_factory=list, max_length=8)
+    unresolved_query_parts: list[str] = Field(default_factory=list, max_length=8)
+
+    @field_validator("performance", "failure_performance")
+    @classmethod
+    def normalize_performance(cls, value: list[str]) -> list[str]:
+        # Reuse the typography and blank-line repairs already proven by the
+        # dialogue runtime, without imposing dialogue-only semantics.
+        if not value:
+            return []
+        return DialogueTurnOutput.strip_beats(value)
+
+
 class DisclosureDecision(RuntimeModel):
     mode: Literal["automatic", "check", "refuse", "unknown"]
     reason: str
@@ -230,6 +263,7 @@ class ValidatedActionPlan(RuntimeModel):
     evidence: list[EvidenceCandidate] = Field(default_factory=list)
     disclosure: DisclosureDecision | None = None
     dialogue: DialogueTurnOutput | None = None
+    composition: TurnCompositionOutput | None = None
 
     @model_validator(mode="after")
     def exactly_one_action(self) -> "ValidatedActionPlan":
@@ -285,6 +319,7 @@ class TurnTrace(RuntimeModel):
     evidence: list[dict[str, Any]] = Field(default_factory=list)
     disclosure: dict[str, Any] | None = None
     dialogue: dict[str, Any] | None = None
+    composition: dict[str, Any] | None = None
     action_id: str | None = None
     kernel_events: list[dict[str, Any]] = Field(default_factory=list)
     state_diff: dict[str, Any] = Field(default_factory=dict)

@@ -15,10 +15,12 @@ from .contracts import (
     PlayerIntentEnvelope,
     SoftFactProposal,
     TurnPlannerDecision,
+    TurnCompositionOutput,
     TurnTrace,
     ValidatedActionPlan,
 )
 from .context import ContextAssembler
+from .composer import ComposedTurn, TurnComposer
 from .dialogue import DialogueAgent, DialogueValidationError, SoftFactValidator
 from .knowledge import DisclosurePolicy, KnowledgeResolver, KnowledgeRetriever
 from .outcome import GroundingValidator, OutcomeBuilder
@@ -28,6 +30,7 @@ from .validation import PlanValidationError, PlanValidator
 __all__ = [
     "AssembledTurnContext",
     "ContextAssembler",
+    "ComposedTurn",
     "DisclosureDecision",
     "DisclosurePolicy",
     "DialogueAgent",
@@ -51,6 +54,8 @@ __all__ = [
     "SoftFactProposal",
     "SoftFactValidator",
     "TurnPlanner",
+    "TurnComposer",
+    "TurnCompositionOutput",
     "TurnPlannerDecision",
     "TurnTrace",
     "ValidatedActionPlan",

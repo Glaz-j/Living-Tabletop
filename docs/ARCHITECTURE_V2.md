@@ -1,134 +1,128 @@
-# Living Tabletop Architecture V2.1 — LLM-first, World-guarded
+# Living Tabletop V2.2 — Conversation-first, World-guarded
 
-## 目标
+## 核心思想
 
-V2.1 将 LLM 放在“理解与完整演出”位置，把检定、状态变化、硬事实冲突和披露权限留在可验证的系统层。世界模型是连续性守卫和长期记忆，不是对话白名单。自由输入与按钮拥有同一条执行流水线；玩家可以偏离剧本，但自由输入本身不等于偏离主线。
+V2.2 以完整对话体验为主，以世界模型保证不可妥协的一致性。LLM 不是结构化世界数据库的朗读器；World Kernel 也不是对话白名单。普通提问、闲聊、议价、临场表演和非主线行动都由同一个前台 `TurnComposer` 理解并演出，只有位置、时间、物品、数值、检定结果、隐藏硬事实等真正会破坏游戏的状态写入由确定性系统裁决。
 
 ## 主流水线
 
 ```mermaid
 flowchart LR
-    A[IntentOption / Free text] --> B[PlayerIntentEnvelope]
+    A[按钮或自由输入] --> B[PlayerIntentEnvelope]
     B --> C[ContextAssembler]
-    C --> D[TurnPlanner LLM]
-    D --> E[PlanValidator]
-    E --> F[KnowledgeResolver]
-    F --> G[DisclosurePolicy]
-    G --> H{TALK?}
-    H -->|yes| I[DialogueAgent LLM]
-    I --> J[SoftFactValidator]
-    H -->|no| K[ValidatedActionPlan]
-    J --> K
-    K --> L[GameEngine / RuleEngine]
-    L --> M[WorldKernel atomic commit]
-    M --> N[OutcomeEnvelope]
-    N --> O{Complete dialogue?}
-    O -->|yes| Q[NarrativeSequence / UI]
-    O -->|no| P[Narrator LLM]
-    P --> Q
+    C --> D[TurnComposer LLM]
+    D --> E[权限降级与软事实过滤]
+    E --> F[RuleEngine / CoC]
+    F --> G[WorldKernel 原子提交]
+    G --> H[选择实际成功或失败演出]
+    H --> I[NarrativeSequence / UI]
+    G --> J[TurnTrace / 后台任务]
 ```
 
-`TurnPlanner`、`DialogueAgent` 与 `Narrator` 是生成式角色。自由对话由 DialogueAgent 一次写成完整回复，不再经过第二个 Narrator 重写。Director 是确定性策略；KnowledgeResolver、DisclosurePolicy 与 PlanValidator 提供上下文和硬边界，但不决定台词是否“有资格”存在。只有 DialogueAgent 显式提出且通过 SoftFactValidator 的低风险细节能够成为新世界事实。
+自由输入的正常路径只有一次前台模型调用。按钮保留作者写好的确定性效果和演出，可以离线执行；部分非 Composer 的作者动作仍可由后台 Narrator 扩写，但不会重写已经完整生成的 Composer 回合。
 
-## 核心决策
+旧版 `TurnPlanner → KnowledgeResolver → DialogueAgent` 仅作为旧存档、录制计划和测试夹具的迁移兼容层存在，不是 V2.2 正常请求路径。
 
-### 1. 输入统一
+## 1. 上下文以原文为主
 
-按钮与自由文本先转换为 `PlayerIntentEnvelope`：
+`ContextAssembler` 提供：
 
-- `source`: `option` 或 `free_text`
-- `text`: 玩家实际表达；按钮可使用其第一人称台词或标签
-- `intent_seed`: 按钮携带的动作 ID、动作类型和硬约束；自由输入为空
-- `actor_id` 与 `scene_id`: 输入发生时的确定性世界坐标
+- 当前玩家原文、世界时间、当前场景和在场角色；
+- 最近最多 24 条、约 8000 字符的逐字可见历史，保留 `player / npc / narration`、说话人与受话人；
+- 与当前输入相关的玩家已知事实；
+- 只属于当前在场 NPC、未隐藏且与当前输入存在词项相关性的知识；
+- 生命、理智、幸运、当前位置、物品和技能等只读硬状态；
+- 可用作者动作的 ID、标签和类型，但不提供预设对话台词，避免模型重播按钮剧情；
+- 玩家明确提及、或已获准事实值中出现的实体。
 
-按钮种子可以让系统离线执行，但不会绕过统一的验证、追踪、结算和叙事边界。
+完整原始对话承担短期连续性；结构化事实只做检索补充。无关 NPC 知识不会因为“确实存在”就全部塞入上下文。这样可以减少本地小模型抓住错误事实答非所问，同时不把未来无法预先枚举的语义压扁成固定槽位。
 
-### 2. Planner 不写结果
+## 2. Turn Composer 同时理解与演出
 
-`TurnPlanner` 只解析：
+`TurnCompositionOutput` 一次返回：
 
-- 动作类型、目标、目的地、时长和风险
-- 是否存在真实不确定性，是否需要检定
-- 对话行为、说话对象、指代与 `KnowledgeQuery`
+- `decision`：选择一个完全匹配的作者动作，或提出一个开放动作；
+- `performance`：1–5 段可直接显示的完整演出；
+- `failure_performance`：只有真实检定需要时提供；
+- `used_fact_ids`：实际使用的既有事实；
+- `proposed_facts`：可选的低风险长期细节；
+- 已回答与未回答的问题部分。
 
-Planner 输出契约中没有成功文本、失败文本、效果列表或事实值。任何旧式 `success_text` / `failure_text` 即使由兼容输入提供，也会在验证前被丢弃。
+重要 NPC 使用第一人称直接对话。当前问题必须先得到回应；NPC 可以不知道、拒绝、犹豫或还价，但不能只复述玩家动作，也不能用旧主线替代当前回答。
 
-玩家原文是服务器持有的授权边界：`goal` 由服务端覆盖为原始输入，不因模型把 `?` 改成 `？` 或整理空格而拒绝。自由文本计划若会改变位置，`PlanValidator` 必须能从玩家原文中找到明确的动身承诺；“疗养院在哪里”这类提问和单纯地点提及不能授权 `MOVE`。执行层在应用移动效果前重复检查这一不变量，因此单次 Planner 误判不会改变地点或推进时间。
+普通发言、提问、请求和议价本身是 automatic。只有动作结果存在真实不确定性时才产生 CoC 检定。检定回合由 Composer 同时写出成功与失败分支，RuleEngine 掷骰后只把实际分支交给 UI；模型永远不能自行宣布检定成功。
 
-本地模型的传输超时、连接错误与 5xx 会短重试一次，耗尽后才进入短暂熔断。模型已成功响应但结构化内容无效时交给 Harness 修复，不打开网络熔断；修复仍失败会向前端报告“行动计划未通过安全校验”，而不是“无法连接 LLM”。
+## 3. 演出 fail-open，状态 fail-closed
 
-### 3. 检索提供依据，不充当台词白名单
+结构化元数据和可见文本采用不同失败策略：
 
-`KnowledgeResolver` 只检索 `WorldState.facts` 与 `npc_knowledge`。它不会把普通 prose 当作新事实，也不会因为语义相似而让 NPC 知道未写入其知识表的硬知识。它的输出是 DialogueAgent 的证据上下文，而不是“只能围绕这些句子回答”的白名单。
+- 网络、超时或完全没有可用文本：整轮不提交，前端显示明确模型错误；
+- 纯标点、引号或软事实字段错误：补齐排版并保留可见演出；
+- 模型误把问路当移动：降级成不改变位置的 TALK/OTHER，保留回答；
+- 无效、冲突或越权的 `proposed_facts`：只丢弃事实提案，不丢弃回复；
+- 精确泄露未授权隐藏硬事实：整轮拒绝，不显示秘密；
+- 任何硬状态写入失败：Kernel 原子回滚。
 
-`KnowledgeRetriever` 是稳定接口。当前 `typed_hybrid_v2` 的流程是：
+因此“模型已经回答，但一个辅助字段不合法”不会再伪装成连通性故障，也不会让 NPC 突然沉默。
 
-1. 将复合问题拆成最多六个独立 `KnowledgeQueryAtom`；本地模型给出的未知关系标签会被丢弃。
-2. 先按 NPC 知情范围、实体、人物焦点、关系类型和历史范围做硬过滤。
-3. 对剩余事实计算中文二/三元组 BM25 与结构化得分，并用 RRF 融合排名；按 NPC 知识内容签名复用小型只读索引，事实或信念变化时自动换键重建。
-4. `DisclosurePolicy` 按 atom 选出能够作为既有事实引用的证据。未被事实覆盖的 atom 对硬知识仍为 unknown，但日常低风险细节可以交给 DialogueAgent 合理补全。
+## 4. 权限分层
 
-检索保持纯 CPU、无额外模型依赖。以后可增加 semantic RAG，但向量或长文档检索只能补充候选，不能绕过类型过滤和披露授权。固定 eval set 与基准报告分别位于 `evals/retrieval/the_haunting_v1.json` 和 `artifacts/benchmarks/retrieval-benchmark.md`。
+| 内容 | 所有者 | LLM 权限 |
+| --- | --- | --- |
+| 玩家原文与是否明确移动 | 服务端 | 只能解释，不能改写授权 |
+| HP / SAN / LUCK / 物品 / 位置 / 时间 | World Kernel | 只读；通过效果提议、由 Kernel 校验 |
+| CoC 掷骰和成功等级 | RuleEngine | 不可伪造 |
+| 谜底、身份、生死、亲属、核心历史 | 硬事实 | 只能引用当前说话 NPC 获准的 fact id |
+| 地址、路线、营业时间、外观、习惯、普通名声 | 软事实 | 可以即兴并提案保存 |
+| 氛围、态度、一次性措辞 | Turn Composer | 可自由创作，不强制结构化 |
 
-### 4. 披露是规则决策
+`used_fact_ids` 只有在玩家已经知道，或当前在场说话 NPC 的相关知识中出现时才能被披露。即便模型猜中隐藏 fact id，也不会获得权限。
 
-`DisclosurePolicy` 将候选分为：
+## 5. 软事实与长期连续性
 
-- `automatic`: NPC 知道且不隐瞒，直接披露
-- `check`: NPC 隐瞒或存在真实阻力，经过规则检定
-- `refuse`: 世界规则明确禁止
-- `unknown`: 没有可支持的知识
+通过 `SoftFactValidator` 的提案会生成稳定哈希 ID，并在同一行动事务中执行：
 
-只有 WorldKernel 提交的 `fact_disclosed` / `player_learned_fact` 事件能增加玩家知识。事件必须携带 `fact_id` 和来源 NPC。披露规则不会强制 DialogueAgent 对日常问题保持沉默；它只限制隐藏硬事实不能被越权说出。
+```text
+create_fact → add_npc_knowledge → reveal_fact
+```
 
-### 5. DialogueAgent 负责完整对话和低风险即兴
+实体必须已存在且对当前上下文可访问；事实只能是 mutable `soft_canon`。与硬事实重叠、针对玩家数值、或试图创建谜底的提案会被丢弃。即使模型没有提出长期事实，本轮逐字输出仍会进入可见历史，供近期对话连续使用。
 
-自由输入的 TALK 计划会调用 DialogueAgent。输入包含玩家原文、说话对象、场景、最近可见历史、玩家已知事实、允许披露的 NPC 事实、问题分项，以及可用于软事实提案的已存在实体。输出包含：
+## 6. 移动和开放世界
 
-- 1–4 个可直接展示的完整演出段；
-- 实际重述的既有 `fact_id`；
-- 可选的 `SoftFactProposal`；
-- 已回答和仍无法回答的问题分项。
+玩家可以离开主线、回家休息、去剧本外地点或永久放弃案件。`PlanValidator` 只保护授权边界：
 
-地址、城区、路线、路程、营业时间、普通名声、外观、习惯、偏好等低风险细节可以即兴生成。谜底、身份、生死、亲属、所有权、核心历史、伤害和规则数值不能由该通道创造。SoftFactValidator 只检查实体存在、说话权限和与已建立事实的冲突，不要求台词逐字复述检索文本。通过校验后，`create_fact → add_npc_knowledge → reveal_fact` 与行动结果在同一次 WorldKernel 提交中完成；因此台词与世界记忆不会出现一边成功、一边丢失的状态。
+- “疗养院在哪里”不授权 MOVE；
+- “我走到窗边，但仍留在房间”是场景内动作，不授权跨场景 MOVE；
+- “我现在去疗养院”可以移动；
+- 物理上不可能的尝试仍被理解和演出，但不会凭宣称改写硬状态。
 
-### 6. Director 只制造机会
+Director 只能通过世界内事件制造机会和提醒，不能传送玩家、强制回主线或把线索机会当成玩家结论。
 
-Director 可以改变可见机会、时间压力、威胁和可供选择的 affordance；不能把“可调查的便笺”直接升级为“玩家已经得出结论”。`world_justification` 只供开发者审计；只有显式 `player_visible_text` 能进入玩家演出和 Narrator 的 OutcomeEnvelope。
+## 7. 可追踪和兼容
 
-`open__*` 不是偏离主线的证据。只有进入标记为 `off_main` 的场景并继续在该支线活动，才会影响偏离遥测。
+每轮 `TurnTrace` 保存原始输入、上下文摘要、Composer 原始输出、最终开放计划、Kernel 事件、状态差异和 Outcome。`AgentCallRecord` 记录模型、耗时、token、校验结果和输出摘要。开发者视图可读，玩家视图不可见。
 
-### 7. Narrator 只消费非对话行动的本轮结果
+保留的兼容面：
 
-WorldKernel 结算后生成 `OutcomeEnvelope`，其中只包含：
+- `GameEngine`、`RuleEngine`、`WorldKernel`、场景 JSON、SQLite 快照和 EventLog；
+- 旧 `OpenActionPlan`、录制回放和 `Keeper` API；
+- 作者按钮、CoC 规则、地图投影和现有前端；
+- 本地优先、远程后备的 `RoutedLLM`。
 
-- 本轮动作与机械结果
-- 本轮新增或获准重述的事实
-- 本轮可见事件
-- 当前可见场景与在场实体
-- Director 本轮制造的机会（若有）
+## 8. Test Agent
 
-Narrator 不再接收“玩家全部已知事实”。GroundingValidator 会在生成文本进入 UI 前检查未批准事实值、未在场角色和跨话题内容；失败时保留确定性演出，不污染世界状态。DialogueAgent 已经交付完整 TALK 演出时，不再启动异步 Narrator，避免第二次生成删掉答案、重复剧情或把话题拉回旧主线。
+V2.2 增加正式的动态测试玩家。8 种人格不会点击默认按钮，而是依据当前公开场景生成互不重复的自由文本，覆盖问路不移动、连续追问、天气闲聊、议价、复合句、指代、捣乱、离题和场景内动作。
 
-### 8. 每轮可追踪
-
-`TurnTrace` 保存输入、上下文摘要、Planner 输出、验证结果、知识查询、证据候选、披露决策、Dialogue 输出、Kernel 事件、状态差异、OutcomeEnvelope 和 grounding 结果。开发者视图可读，玩家视图不可见。
-
-## 兼容策略
-
-- `GameEngine`、`RuleEngine`、`WorldKernel`、`ScenarioDefinition`、SQLite 快照和 EventLog 继续保留。
-- 旧回放中的 `OpenActionPlan.success_text` / `failure_text` 仍可读取；新 Planner 不产生这些字段。
-- 新字段全部有默认值，旧存档可以直接加载。
-- `Keeper` 暂保留为旧 API 适配器；主执行链改用 `TurnPlanner`。
-- authored action 继续由场景定义提供效果和演出，但新增事实仍必须对应 Kernel 的事实事件。
+快速合约模拟器用于数百轮状态不变量 fuzzing；真实本地/API 模型用于较小规模的 Schema、文风、相关性和延迟烟测。失败会保留角色、输入、探针、状态版本和可见输出，形成可复现失败语料。详见 [TEST_AGENT.md](TEST_AGENT.md)。
 
 ## 不变量
 
-1. 玩家输入永远先被接受为意图，物理上不可能的结果可以失败，但不能把输入误路由成另一件事。
-2. 自由输入不自动计为 off-main。
-3. Director 机会不等于玩家结论。
-4. 既有硬事实的 NPC 披露必须能追溯到 `npc_knowledge`、`fact_id` 和来源 NPC。
-5. 普通 prose 不能修改 `WorldState`；只有通过校验的显式软事实提案可以由 Kernel 写入。
-6. DialogueAgent 不能获得未授权隐藏硬事实的值，也不能创建新实体或替玩家移动。
-7. Narrator 不能获得本轮 OutcomeEnvelope 之外的隐藏或无关事实。
-8. 按钮和自由文本都产生 `PlayerIntentEnvelope` 与 `TurnTrace`。
+1. 玩家原文逐字进入回合，并保持玩家是发言或动作主体。
+2. 提问或地点提及不能改变位置；明确留在场景内的动作也不能跨场景。
+3. 普通对话必须产生完整可见回应；软元数据错误不能删除回应。
+4. 隐藏硬事实只能由获准的当前说话 NPC 披露。
+5. LLM prose 不能直接修改硬状态；所有副作用由 Kernel 原子提交。
+6. 机械检定只显示 RuleEngine 选中的 Composer 分支。
+7. 新回合不能重播上一轮演出；中断事件可以合理打断回答。
+8. 自由输入不自动计为 off-main，玩家可以永久偏离主线。

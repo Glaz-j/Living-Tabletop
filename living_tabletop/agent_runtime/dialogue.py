@@ -62,10 +62,10 @@ class SoftFactValidator:
     def _normalized(value: object) -> str:
         return re.sub(r"[\s，。！？、；：,.!?;:'\"“”‘’（）()]+", "", str(value)).lower()
 
-    def validate(
+    def validate_prose(
         self,
         state: WorldState,
-        output: DialogueTurnOutput,
+        beats: list[str],
         *,
         speaker_id: str,
         allowed_entity_ids: set[str],
@@ -76,16 +76,26 @@ class SoftFactValidator:
         player_location = state.entities[state.player.entity_id].location
         if state.entities[speaker_id].location != player_location:
             raise DialogueValidationError("dialogue speaker is not present in the current scene")
-        if not output.beats or any(not beat.strip() for beat in output.beats):
-            raise DialogueValidationError("dialogue must contain complete non-empty beats")
-        # A malformed citation or soft-fact proposal must not erase an otherwise
-        # useful NPC reply. Unsupported metadata is discarded; hidden hard-canon
-        # leakage in the actual prose is still rejected below.
-        output.used_fact_ids = list(
-            dict.fromkeys(fact_id for fact_id in output.used_fact_ids if fact_id in allowed_fact_ids)
+        self.validate_accessible_prose(
+            state,
+            beats,
+            allowed_entity_ids=allowed_entity_ids,
+            allowed_fact_ids=allowed_fact_ids,
         )
 
-        reply_text = "\n".join(output.beats)
+    def validate_accessible_prose(
+        self,
+        state: WorldState,
+        beats: list[str],
+        *,
+        allowed_entity_ids: set[str],
+        allowed_fact_ids: set[str],
+    ) -> None:
+        """Reject exact hidden canon leakage for dialogue and narration alike."""
+
+        if not beats or any(not beat.strip() for beat in beats):
+            raise DialogueValidationError("performance must contain complete non-empty beats")
+        reply_text = "\n".join(beats)
         normalized_reply = self._normalized(reply_text)
         for fact in state.facts.values():
             if fact.id in state.player_known_fact_ids or fact.id in allowed_fact_ids:
@@ -104,9 +114,18 @@ class SoftFactValidator:
                     f"dialogue mentions an entity outside accessible world context: {entity.id}"
                 )
 
+    def filter_proposals(
+        self,
+        state: WorldState,
+        proposals: Iterable[SoftFactProposal],
+        *,
+        allowed_entity_ids: set[str],
+    ) -> list[SoftFactProposal]:
+        """Drop unsupported soft metadata without invalidating useful prose."""
+
         proposal_keys: set[tuple[str, str]] = set()
         valid_proposals: list[SoftFactProposal] = []
-        for proposal in output.proposed_facts:
+        for proposal in proposals:
             entity = state.entities.get(proposal.subject_entity_id)
             if proposal.subject_entity_id not in allowed_entity_ids or entity is None:
                 logger.info("Dropped soft fact for inaccessible entity: %s", proposal.subject_entity_id)
@@ -136,10 +155,6 @@ class SoftFactValidator:
                 continue
             attribute_value = entity.attributes.get(proposal.predicate)
             if attribute_value is not None and self._normalized(attribute_value) != self._normalized(proposal.value):
-                if self._normalized(proposal.value) in normalized_reply:
-                    raise DialogueValidationError(
-                        f"dialogue contradicts an established entity attribute: {key}"
-                    )
                 logger.info("Dropped soft fact conflicting with entity attribute: %s", key)
                 continue
             conflict = False
@@ -151,10 +166,6 @@ class SoftFactValidator:
                     logger.info("Dropped soft fact overlapping hidden hard canon: %s", fact.id)
                     break
                 if self._normalized(fact.value) != self._normalized(proposal.value):
-                    if self._normalized(proposal.value) in normalized_reply:
-                        raise DialogueValidationError(
-                            f"dialogue contradicts established canon: {fact.id}"
-                        )
                     conflict = True
                     logger.info("Dropped soft fact conflicting with established canon: %s", fact.id)
                     break
@@ -162,7 +173,53 @@ class SoftFactValidator:
                 continue
             proposal_keys.add(key)
             valid_proposals.append(proposal)
-        output.proposed_facts = valid_proposals
+        return valid_proposals
+
+    def validate(
+        self,
+        state: WorldState,
+        output: DialogueTurnOutput,
+        *,
+        speaker_id: str,
+        allowed_entity_ids: set[str],
+        allowed_fact_ids: set[str],
+    ) -> None:
+        # A malformed citation or soft-fact proposal must not erase an otherwise
+        # useful NPC reply. Unsupported metadata is discarded; hidden hard-canon
+        # leakage in the actual prose is still rejected.
+        output.used_fact_ids = list(
+            dict.fromkeys(fact_id for fact_id in output.used_fact_ids if fact_id in allowed_fact_ids)
+        )
+        # Keep the legacy dialogue contract strict for visible contradictions.
+        # V2 calls filter_proposals directly, so malformed soft metadata can be
+        # discarded there without erasing the foreground performance.
+        normalized_reply = self._normalized("\n".join(output.beats))
+        for proposal in output.proposed_facts:
+            proposed_value = self._normalized(proposal.value)
+            if proposed_value not in normalized_reply:
+                continue
+            for fact in state.facts.values():
+                if (
+                    fact.subject == proposal.subject_entity_id
+                    and fact.predicate == proposal.predicate
+                    and self._normalized(fact.value) != proposed_value
+                    and fact.canon == "hard_canon"
+                ):
+                    raise DialogueValidationError(
+                        f"dialogue contradicts established canon: {fact.id}"
+                    )
+        self.validate_prose(
+            state,
+            output.beats,
+            speaker_id=speaker_id,
+            allowed_entity_ids=allowed_entity_ids,
+            allowed_fact_ids=allowed_fact_ids,
+        )
+        output.proposed_facts = self.filter_proposals(
+            state,
+            output.proposed_facts,
+            allowed_entity_ids=allowed_entity_ids,
+        )
 
     def materialize(
         self,
