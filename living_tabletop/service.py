@@ -325,7 +325,7 @@ class GameService:
             "ruleset": "coc7_quickstart_subset_v1",
             "action_model": "validated_agent_runtime_v2",
             "narrative_mode": "outcome_grounded_async_beats_v2",
-            "dialogue_mode": "llm_first_world_guarded_soft_canon_v1",
+            "dialogue_mode": "llm_first_contextual_transcript_v2",
             "llm": {
                 "enabled": self.llm.enabled,
                 "model": self.llm.settings.model,

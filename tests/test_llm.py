@@ -229,7 +229,9 @@ class FakeLLM:
                 "used_fact_ids": [],
                 "proposed_facts": [],
                 "answered_query_parts": [],
-                "unresolved_query_parts": [kwargs["user_payload"]["player_input"]],
+                "unresolved_query_parts": [
+                    kwargs["user_payload"]["current_turn"]["utterance_verbatim"]
+                ],
             }
         return LLMResult(data=data, latency_ms=3, input_tokens=10, output_tokens=5)
 

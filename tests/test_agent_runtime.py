@@ -572,6 +572,104 @@ def test_unknown_npc_answer_does_not_fabricate_or_reveal_a_fact():
     assert resolved.turn_traces[-1]["disclosure"]["mode"] == "unknown"
 
 
+def test_dialogue_context_preserves_player_role_and_raw_negotiation_transcript():
+    scenario, state = _haunting_state()
+    offline = OpenAICompatibleLLM(LLMSettings(enabled=False, api_key=None))
+    state, introduced = GameEngine(scenario, offline).play(
+        state,
+        action_id="cafe_question_knott",
+    )
+    assert introduced.accepted is True
+
+    text = "说实话，钱太少了，这种有点危险的活要加钱"
+    planner_output = {
+        "existing_action_id": None,
+        "confidence": 0.99,
+        "open_plan": {
+            "label": "玩家向诺特要求提高这次委托的报酬",
+            "action_type": "TALK",
+            "goal": text,
+            "target_name": "史蒂文·诺特",
+            "target_entity_id": "npc_knott",
+            "addressee_id": "npc_knott",
+            "duration_minutes": 0,
+            "resolution": "automatic",
+            "risk": "safe",
+            "speech_act": "request",
+            "referents": [],
+            "knowledge_query": None,
+        },
+    }
+    dialogue_output = {
+        "beats": ["诺特沉默片刻。‘我明白你的顾虑。报酬的事，我们可以再谈。’"],
+        "used_fact_ids": [],
+        "proposed_facts": [],
+        "answered_query_parts": [],
+        "unresolved_query_parts": [],
+    }
+    llm = DialogueRoutingLLM(planner_output, dialogue_output)
+
+    resolved, resolution = GameEngine(scenario, llm).play(state, text=text)
+
+    assert resolution.accepted is True
+    dialogue_call = next(
+        call for call in llm.calls if call.get("schema_name") == "DialogueTurnOutput"
+    )
+    payload = dialogue_call["user_payload"]
+    assert "player_input" not in payload
+    assert "speaker" not in payload
+    assert payload["current_turn"] == {
+        "role": "player",
+        "speaker_id": "player",
+        "speaker_name": resolved.entities["player"].name,
+        "addressee_id": "npc_knott",
+        "addressee_name": "史蒂文·诺特",
+        "utterance_verbatim": text,
+        "semantic_reading": "玩家向诺特要求提高这次委托的报酬。",
+        "conversation_focus": "紧接玩家当前发言作出回应：玩家向诺特要求提高这次委托的报酬。",
+        "speech_act_hint": "request",
+    }
+    assert payload["npc_responder"]["id"] == "npc_knott"
+    assert payload["question_parts"] == []
+    assert "loc_library" not in {
+        item["id"] for item in payload["generatable_world_entities"]
+    }
+    assert "玩家原话改写成 NPC 自己的第一人称立场" in dialogue_call["system"]
+    assert "必须在第一段台词中回应诉求本身" in dialogue_call["system"]
+
+    player_memory = next(item for item in resolved.visible_history if item.text == text)
+    npc_memory = next(
+        item for item in resolved.visible_history if item.text == dialogue_output["beats"][0]
+    )
+    assert (player_memory.source, player_memory.speaker_id, player_memory.addressee_id) == (
+        "player",
+        "player",
+        "npc_knott",
+    )
+    assert (npc_memory.speaker_id, npc_memory.addressee_id) == ("npc_knott", "player")
+
+    next_envelope = PlayerIntentEnvelope(
+        id="intent_follow_up",
+        source="free_text",
+        text="那你愿意加多少？",
+        actor_id="player",
+        scene_id="loc_cafe",
+    )
+    next_context = ContextAssembler().assemble(
+        resolved,
+        next_envelope,
+        WorldKernel(scenario).available_actions(resolved),
+        semantic_hint="玩家继续与诺特商谈报酬",
+    )
+    transcript = {
+        item["text"]: item for item in next_context.recent_visible_history
+    }
+    assert transcript[text]["role"] == "player"
+    assert transcript[text]["speaker_id"] == "player"
+    assert transcript[dialogue_output["beats"][0]]["role"] == "npc"
+    assert transcript[dialogue_output["beats"][0]]["speaker_id"] == "npc_knott"
+
+
 def test_dialogue_agent_can_create_persist_and_retrieve_missing_soft_location_fact(tmp_path):
     scenario, state = _haunting_state()
     engine = GameEngine(scenario, OpenAICompatibleLLM(LLMSettings(enabled=False, api_key=None)))

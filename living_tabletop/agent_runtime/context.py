@@ -13,7 +13,12 @@ class ContextAssembler:
         state: WorldState,
         envelope: PlayerIntentEnvelope,
         available_actions: list[ActionDefinition],
+        *,
+        semantic_hint: str | None = None,
     ) -> AssembledTurnContext:
+        retrieval_query = "\n".join(
+            item for item in (envelope.text, (semantic_hint or "").strip()) if item
+        )
         player_entity = state.entities[state.player.entity_id]
         location = state.entities.get(player_entity.location or "")
         present = [
@@ -42,7 +47,7 @@ class ContextAssembler:
                 "canon": fact.canon,
             }
             score = context_relevance_score(
-                envelope.text,
+                retrieval_query,
                 f"{fact.subject} {fact.predicate} {fact.value}",
             )
             known_facts.append((score, serialized))
@@ -59,10 +64,10 @@ class ContextAssembler:
             player_known_facts=[item for _score, item in known_facts[:24]],
             recent_visible_history=recent_visible_context(
                 state,
-                query=envelope.text,
+                query=retrieval_query,
                 max_entries=24,
                 max_characters=8000,
-                immediate_entries=6,
+                immediate_entries=10,
             ),
             inventory=[
                 {"id": item_id, "name": state.entities[item_id].name}

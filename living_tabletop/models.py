@@ -547,8 +547,12 @@ class PlayerVisibleMemory(DomainModel):
     location_id: str | None = None
     sequence_id: str | None = None
     kind: Literal["hard_canon", "soft_canon", "dialogue_claim"]
-    source: Literal["authored", "event", "scene", "director", "keeper", "generated", "system"]
+    source: Literal[
+        "player", "authored", "event", "scene", "director", "keeper", "generated", "system"
+    ]
     action_type: ActionType | None = None
+    speaker_id: str | None = None
+    addressee_id: str | None = None
     text: str = Field(min_length=1, max_length=1600)
 
 

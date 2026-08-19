@@ -46,6 +46,10 @@ class TurnPlanner:
             "output_contract": {
                 "existing_action_id": "use only when an available action exactly matches the whole intent",
                 "open_plan": {
+                    "label": (
+                        "one concise natural-language interpretation of what the player is doing; "
+                        "keep the player as the actor and preserve who they address"
+                    ),
                     "goal": "copy player_intent.text exactly",
                     "action_type": [item.value for item in ActionType],
                     "resolution": ["automatic", "check", "impossible"],
@@ -71,6 +75,8 @@ class TurnPlanner:
             "KnowledgeQuery 只描述要查什么，不得猜测答案或 fact_id；复合问题必须按语义拆成 atoms，"
             "每个 atom 单独保留 query_text、subject_entity_ids、predicate_hints 和 relation_types。"
             "NPC 是否知道以及是否披露由后续系统决定。"
+            "open_plan.label 要用自然语言概括玩家正在做什么，必须保留玩家是动作或发言的主体以及交谈对象；"
+            "例如玩家要求诺特加钱，应概括为‘玩家向诺特要求提高报酬’，不能写成‘诺特要求提高报酬’。"
             "不要输出成功/失败文本、NPC 回答、事实值、效果、世界状态修改或导演建议。"
             "open_plan.goal 必须逐字复制玩家原文。只输出符合 JSON Schema 的对象。"
         )
@@ -129,6 +135,13 @@ class TurnPlanner:
                             ],
                         )
                 decision = TurnPlannerDecision(open_plan=plan, confidence=decision.confidence)
+            if plan is not None:
+                context = self.context_assembler.assemble(
+                    state,
+                    envelope,
+                    available_actions,
+                    semantic_hint=plan.label,
+                )
             record_agent_call(
                 state,
                 role="turn_planner",

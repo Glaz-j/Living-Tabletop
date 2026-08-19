@@ -6,6 +6,7 @@ from typing import Iterable
 
 from .models import (
     ActionType,
+    EntityType,
     NarrativeBeat,
     NarrativeSequence,
     PlayerVisibleMemory,
@@ -97,6 +98,54 @@ def _kind_for_beat(beat: NarrativeBeat, action_type: ActionType | None) -> str:
     return "hard_canon"
 
 
+def _dialogue_participants(
+    state: WorldState,
+    sequence: NarrativeSequence,
+) -> tuple[str | None, str | None]:
+    """Recover the minimal roles needed to preserve a readable raw transcript."""
+
+    if not sequence.player_text:
+        return None, None
+    player_id = state.player.entity_id
+    responder_id: str | None = None
+    speech_act = "none"
+
+    if sequence.turn_trace_id:
+        trace = next(
+            (
+                item
+                for item in reversed(state.turn_traces)
+                if item.get("id") == sequence.turn_trace_id
+            ),
+            None,
+        )
+        planner_output = trace.get("planner_output", {}) if isinstance(trace, dict) else {}
+        plan = planner_output.get("open_plan", {}) if isinstance(planner_output, dict) else {}
+        if isinstance(plan, dict):
+            speech_act = str(plan.get("speech_act") or "none")
+            responder_id = plan.get("addressee_id")
+            if not responder_id and sequence.action_type in {ActionType.TALK, ActionType.DECEIVE}:
+                responder_id = plan.get("target_entity_id")
+
+    if not responder_id and sequence.action_type in {ActionType.TALK, ActionType.DECEIVE}:
+        started = next(
+            (
+                event
+                for event in reversed(state.event_log)
+                if event.type == "action_started"
+                and event.payload.get("action_id") == sequence.action_id
+            ),
+            None,
+        )
+        responder_id = started.target if started is not None else None
+
+    responder = state.entities.get(str(responder_id)) if responder_id else None
+    has_dialogue = sequence.action_type in {ActionType.TALK, ActionType.DECEIVE} or speech_act != "none"
+    if not has_dialogue or responder is None or responder.type != EntityType.NPC:
+        return None, None
+    return player_id, responder.id
+
+
 def remember_visible_beats(
     state: WorldState,
     sequence: NarrativeSequence,
@@ -106,14 +155,45 @@ def remember_visible_beats(
 
     selected = list(sequence.beats if beats is None else beats)
     existing = {
-        (entry.sequence_id, _normalized(entry.text))
+        (entry.sequence_id, entry.speaker_id, _normalized(entry.text))
         for entry in state.visible_history
     }
     player = state.entities.get(state.player.entity_id)
     location_id = player.location if player else None
+    player_speaker_id, responder_id = _dialogue_participants(state, sequence)
+
+    player_text = (sequence.player_text or "").strip()
+    if player_speaker_id and player_text:
+        player_key = (sequence.id, player_speaker_id, _normalized(player_text))
+        if player_key not in existing:
+            existing.add(player_key)
+            state.visible_history.append(
+                PlayerVisibleMemory(
+                    id=f"visible_{state.version:06d}_{len(state.visible_history) + 1:04d}",
+                    state_version=sequence.state_version,
+                    world_time=state.world_time,
+                    location_id=location_id,
+                    sequence_id=sequence.id,
+                    kind="dialogue_claim",
+                    source="player",
+                    action_type=sequence.action_type,
+                    speaker_id=player_speaker_id,
+                    addressee_id=responder_id,
+                    text=player_text,
+                )
+            )
+
     for beat in selected:
-        key = (sequence.id, _normalized(beat.text))
-        if not key[1] or key in existing:
+        normalized = _normalized(beat.text)
+        if not normalized:
+            continue
+        if player_speaker_id and normalized == _normalized(player_text):
+            continue
+        kind = _kind_for_beat(beat, sequence.action_type)
+        beat_speaker_id = responder_id if kind == "dialogue_claim" else None
+        beat_addressee_id = player_speaker_id if beat_speaker_id else None
+        key = (sequence.id, beat_speaker_id, normalized)
+        if key in existing:
             continue
         existing.add(key)
         state.visible_history.append(
@@ -123,9 +203,11 @@ def remember_visible_beats(
                 world_time=state.world_time,
                 location_id=location_id,
                 sequence_id=sequence.id,
-                kind=_kind_for_beat(beat, sequence.action_type),
+                kind=kind,
                 source=beat.source,
                 action_type=sequence.action_type,
+                speaker_id=beat_speaker_id,
+                addressee_id=beat_addressee_id,
                 text=beat.text,
             )
         )
@@ -258,8 +340,22 @@ def recent_visible_context(
                 or _looks_like_dialogue(entry.text)
                 else "soft_canon"
             )
+        speaker = state.entities.get(entry.speaker_id or "")
+        addressee = state.entities.get(entry.addressee_id or "")
+        role = (
+            "player"
+            if entry.speaker_id == state.player.entity_id
+            else "npc"
+            if speaker is not None and speaker.type == EntityType.NPC
+            else "narration"
+        )
         serialized.append(
             {
+                "role": role,
+                "speaker_id": entry.speaker_id,
+                "speaker_name": speaker.name if speaker is not None else None,
+                "addressee_id": entry.addressee_id,
+                "addressee_name": addressee.name if addressee is not None else None,
                 "kind": kind,
                 "text": entry.text,
                 "state_version": entry.state_version,

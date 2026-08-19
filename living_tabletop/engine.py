@@ -1934,7 +1934,7 @@ class GameEngine:
                 "source": self.scenario.source.model_dump(mode="json") if self.scenario.source else None,
                 "ruleset": "coc7_quickstart_subset_v1",
                 "narrative_mode": "outcome_grounded_async_beats_v2",
-                "dialogue_mode": "llm_first_world_guarded_soft_canon_v1",
+                "dialogue_mode": "llm_first_contextual_transcript_v2",
             },
             "version": state.version,
             "status": state.status.value,
