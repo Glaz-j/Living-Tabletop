@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..models import ActionType, OpenActionPlan
 
@@ -130,6 +131,73 @@ class EvidenceCandidate(RuntimeModel):
     component_scores: dict[str, float] = Field(default_factory=dict)
 
 
+class SoftFactProposal(RuntimeModel):
+    """A low-stakes world detail the dialogue model wants to establish."""
+
+    subject_entity_id: str = Field(min_length=1, max_length=120)
+    predicate: Literal[
+        "address",
+        "district",
+        "route_description",
+        "travel_time",
+        "opening_hours",
+        "access_notes",
+        "contact_details",
+        "local_reputation",
+        "appearance",
+        "mannerism",
+        "habit",
+        "preference",
+        "minor_background",
+    ]
+    value: str = Field(min_length=1, max_length=500)
+    confidence: float = Field(default=0.9, ge=0.5, le=1.0)
+
+    @field_validator("value")
+    @classmethod
+    def strip_value(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("soft fact value cannot be blank")
+        return value
+
+
+class DialogueTurnOutput(RuntimeModel):
+    """Complete player-facing dialogue plus auditable soft-canon proposals."""
+
+    beats: list[str] = Field(min_length=1, max_length=4)
+    used_fact_ids: list[str] = Field(default_factory=list, max_length=8)
+    proposed_facts: list[SoftFactProposal] = Field(default_factory=list, max_length=6)
+    answered_query_parts: list[str] = Field(default_factory=list, max_length=8)
+    unresolved_query_parts: list[str] = Field(default_factory=list, max_length=8)
+
+    @field_validator("beats")
+    @classmethod
+    def strip_beats(cls, value: list[str]) -> list[str]:
+        beats = []
+        for raw in value:
+            item = raw.strip()
+            if not item:
+                continue
+            # Qwen occasionally emits `", "` inside one beat as though it were
+            # separating two JSON strings. Inside an already parsed string this is
+            # a duplicated dialogue opener, so collapse it before balancing quotes.
+            item = re.sub(r'"\s*[,，]\s*"', '"', item)
+            # Small local models occasionally wrap a whole beat in ASCII quotes and
+            # then open a second direct quote inside it. Drop only that redundant
+            # outer opener so the intended dialogue pair remains balanced.
+            if item.count('"') % 2 == 1 and item.startswith('"') and item.endswith('"'):
+                item = item[1:]
+            while '"' in item:
+                item = item.replace('"', "“", 1)
+                if '"' in item:
+                    item = item.replace('"', "”", 1)
+            beats.append(item)
+        if not beats:
+            raise ValueError("dialogue beats cannot be blank")
+        return beats
+
+
 class DisclosureDecision(RuntimeModel):
     mode: Literal["automatic", "check", "refuse", "unknown"]
     reason: str
@@ -152,6 +220,7 @@ class ValidatedActionPlan(RuntimeModel):
     knowledge_query: KnowledgeQuery | None = None
     evidence: list[EvidenceCandidate] = Field(default_factory=list)
     disclosure: DisclosureDecision | None = None
+    dialogue: DialogueTurnOutput | None = None
 
     @model_validator(mode="after")
     def exactly_one_action(self) -> "ValidatedActionPlan":
@@ -206,6 +275,7 @@ class TurnTrace(RuntimeModel):
     knowledge_query: dict[str, Any] | None = None
     evidence: list[dict[str, Any]] = Field(default_factory=list)
     disclosure: dict[str, Any] | None = None
+    dialogue: dict[str, Any] | None = None
     action_id: str | None = None
     kernel_events: list[dict[str, Any]] = Field(default_factory=list)
     state_diff: dict[str, Any] = Field(default_factory=dict)

@@ -102,7 +102,7 @@ def create_app(
     app = FastAPI(
         title="Living Tabletop V0",
         version="0.1.0",
-        description="Simulation-first AI TTRPG demo",
+        description="LLM-first, world-guarded AI TTRPG demo",
     )
     if service is not None:
         app.dependency_overrides[get_service] = lambda: service

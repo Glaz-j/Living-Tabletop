@@ -46,6 +46,15 @@ _PREDICATE_RELATIONS: dict[str, set[str]] = {
     "burial_record": {"burial", "location"},
     "police_raid": {"history", "experience", "time"},
     "commission": {"status"},
+    "address": {"location"},
+    "district": {"location"},
+    "route_description": {"location"},
+    "travel_time": {"location", "duration"},
+    "opening_hours": {"time"},
+    "access_notes": {"location"},
+    "contact_details": {"identity"},
+    "local_reputation": {"status"},
+    "minor_background": {"history"},
 }
 
 _SPECIFIC_RELATIONS = {

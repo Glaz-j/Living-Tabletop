@@ -10,6 +10,7 @@ from .models import (
     EntityType,
     EventRecord,
     KnowledgeEntry,
+    Fact,
     MemoryEntry,
     ScenarioDefinition,
     ScheduledEvent,
@@ -153,6 +154,38 @@ class WorldKernel:
             return
         params = effect.params
         op = effect.op
+
+        if op == "create_fact":
+            fact = Fact.model_validate(params["fact"])
+            if fact.id in state.facts:
+                existing = state.facts[fact.id]
+                if existing != fact:
+                    raise KernelValidationError(f"Cannot replace existing fact: {fact.id}")
+                return
+            if fact.subject not in state.entities:
+                raise KernelValidationError(f"Dynamic fact has an unknown subject: {fact.subject}")
+            if fact.immutable or fact.canon != "soft_canon":
+                raise KernelValidationError("Dynamic dialogue facts must be mutable soft canon")
+            dynamic_count = sum(
+                1 for existing in state.facts.values() if existing.source.startswith("dialogue:")
+            )
+            if dynamic_count >= 300:
+                raise KernelValidationError("Dynamic fact limit reached")
+            state.facts[fact.id] = fact
+            self.append_event(
+                state,
+                "fact_created",
+                target=fact.id,
+                payload={
+                    "subject": fact.subject,
+                    "predicate": fact.predicate,
+                    "value": fact.value,
+                    "canon": fact.canon,
+                    "source": source,
+                },
+                visible=False,
+            )
+            return
 
         if op == "create_entity":
             entity = Entity.model_validate(params["entity"])

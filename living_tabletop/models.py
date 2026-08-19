@@ -137,6 +137,7 @@ class Condition(DomainModel):
 
 class Effect(DomainModel):
     op: Literal[
+        "create_fact",
         "reveal_fact",
         "set_fact",
         "move_entity",
@@ -497,7 +498,9 @@ class PendingCheck(DomainModel):
 
 class AgentCallRecord(DomainModel):
     id: str
-    role: Literal["action_interpreter", "keeper", "turn_planner", "director", "narrator"]
+    role: Literal[
+        "action_interpreter", "keeper", "turn_planner", "dialogue", "director", "narrator"
+    ]
     input_state_version: int
     output_digest: str
     structured_output: dict[str, Any] | None = None
@@ -642,6 +645,12 @@ class OpenActionPlan(DomainModel):
     rest_day_offset: int = Field(default=0, ge=0, le=7)
     success_text: str = Field(min_length=1, max_length=1200)
     failure_text: str = Field(default="这次尝试没有产生预期的结果。", min_length=1, max_length=1200)
+    success_beats: list[str] = Field(default_factory=list, max_length=4)
+    failure_beats: list[str] = Field(default_factory=list, max_length=4)
+    generated_facts: list[Fact] = Field(default_factory=list, max_length=6)
+    speech_act: Literal[
+        "none", "question", "statement", "request", "smalltalk", "deception", "threat"
+    ] = "none"
     approved_fact_ids: list[str] = Field(default_factory=list)
     knowledge_source_id: str | None = None
     disclosure_mode: Literal["automatic", "check", "refuse", "unknown"] | None = None

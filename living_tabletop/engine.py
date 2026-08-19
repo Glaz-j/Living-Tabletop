@@ -9,6 +9,7 @@ from typing import Any
 
 from .agent_runtime import (
     ContextAssembler,
+    DialogueAgent,
     DisclosurePolicy,
     IntentSeed,
     KnowledgeResolver,
@@ -57,6 +58,7 @@ class GameEngine:
         self.plan_validator = PlanValidator()
         self.knowledge_resolver = KnowledgeResolver()
         self.disclosure_policy = DisclosurePolicy()
+        self.dialogue_agent = DialogueAgent(self.llm)
         self.outcome_builder = OutcomeBuilder()
         self.keeper = Keeper(self.llm, scenario)
         self.narrator = Narrator(self.llm, scenario)
@@ -135,6 +137,11 @@ class GameEngine:
             disclosure=(
                 validated.disclosure.model_dump(mode="json")
                 if validated.disclosure
+                else None
+            ),
+            dialogue=(
+                validated.dialogue.model_dump(mode="json")
+                if validated.dialogue
                 else None
             ),
             action_id=action_id,
@@ -285,6 +292,26 @@ class GameEngine:
                     disclosure = self.disclosure_policy.decide(working, query, evidence)
                     open_plan = self.disclosure_policy.apply(open_plan, disclosure)
                     open_plan.knowledge_query_text = query.query_text
+                dialogue = None
+                if planned.action_type == ActionType.TALK:
+                    dialogue = self.dialogue_agent.compose(
+                        working,
+                        envelope=envelope,
+                        planned=planned,
+                        plan=open_plan,
+                        context=assembled_context,
+                        query=query,
+                        evidence=evidence,
+                        disclosure=disclosure,
+                    )
+                    speaker_id = planned.addressee_id or planned.target_entity_id
+                    if speaker_id:
+                        open_plan = self.dialogue_agent.apply(
+                            working,
+                            open_plan,
+                            dialogue,
+                            speaker_id=speaker_id,
+                        )
                 validated = ValidatedActionPlan(
                     envelope=envelope,
                     open_plan=open_plan,
@@ -292,6 +319,7 @@ class GameEngine:
                     knowledge_query=query,
                     evidence=evidence,
                     disclosure=disclosure,
+                    dialogue=dialogue,
                 )
                 intent = ActionIntent(
                     action_id=None,
@@ -600,6 +628,22 @@ class GameEngine:
             )
             for fact_id in plan.approved_fact_ids
         ]
+        generated_fact_effects: list[Effect] = []
+        for fact in plan.generated_facts:
+            generated_fact_effects.extend(
+                [
+                    Effect(op="create_fact", params={"fact": fact.model_dump(mode="json")}),
+                    Effect(
+                        op="add_npc_knowledge",
+                        params={
+                            "npc_id": plan.knowledge_source_id,
+                            "fact_id": fact.id,
+                            "confidence": 1.0,
+                            "source": fact.source,
+                        },
+                    ),
+                ]
+            )
         return ActionDefinition(
             id=f"open__{digest}",
             label=plan.label,
@@ -610,9 +654,11 @@ class GameEngine:
             skill=plan.skill if plan.resolution == "check" else None,
             difficulty=plan.difficulty,
             pushable=plan.resolution == "check",
-            success_effects=disclosure_effects,
+            success_effects=[*generated_fact_effects, *disclosure_effects],
             success_text=plan.success_text,
             failure_text=plan.failure_text,
+            success_beats=plan.success_beats,
+            failure_beats=plan.failure_beats,
             suggest=False,
             risk=plan.risk,
             category=category,
@@ -663,6 +709,7 @@ class GameEngine:
                 "knowledge_query_text": plan.knowledge_query_text,
                 "answered_query_parts": plan.answered_query_parts,
                 "unanswered_query_parts": plan.unanswered_query_parts,
+                "generated_fact_ids": [fact.id for fact in plan.generated_facts],
             },
             visible=True,
         )
@@ -1551,6 +1598,11 @@ class GameEngine:
             action,
             resolution,
             location_before=location_before,
+            allow_generation=not (
+                action.id.startswith("open__")
+                and action.type == ActionType.TALK
+                and bool(action.success_beats)
+            ),
         )
         remember_visible_beats(state, state.narrative_sequence)
         return state, resolution
@@ -1874,6 +1926,7 @@ class GameEngine:
                 "source": self.scenario.source.model_dump(mode="json") if self.scenario.source else None,
                 "ruleset": "coc7_quickstart_subset_v1",
                 "narrative_mode": "outcome_grounded_async_beats_v2",
+                "dialogue_mode": "llm_first_world_guarded_soft_canon_v1",
             },
             "version": state.version,
             "status": state.status.value,

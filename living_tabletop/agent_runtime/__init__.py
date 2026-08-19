@@ -3,6 +3,7 @@
 from .contracts import (
     AssembledTurnContext,
     DisclosureDecision,
+    DialogueTurnOutput,
     DisclosedFact,
     EvidenceCandidate,
     GroundingReport,
@@ -12,11 +13,13 @@ from .contracts import (
     OutcomeEnvelope,
     PlannedOpenAction,
     PlayerIntentEnvelope,
+    SoftFactProposal,
     TurnPlannerDecision,
     TurnTrace,
     ValidatedActionPlan,
 )
 from .context import ContextAssembler
+from .dialogue import DialogueAgent, DialogueValidationError, SoftFactValidator
 from .knowledge import DisclosurePolicy, KnowledgeResolver, KnowledgeRetriever
 from .outcome import GroundingValidator, OutcomeBuilder
 from .planner import TurnPlanner
@@ -27,6 +30,9 @@ __all__ = [
     "ContextAssembler",
     "DisclosureDecision",
     "DisclosurePolicy",
+    "DialogueAgent",
+    "DialogueTurnOutput",
+    "DialogueValidationError",
     "DisclosedFact",
     "EvidenceCandidate",
     "GroundingReport",
@@ -42,6 +48,8 @@ __all__ = [
     "PlanValidator",
     "PlannedOpenAction",
     "PlayerIntentEnvelope",
+    "SoftFactProposal",
+    "SoftFactValidator",
     "TurnPlanner",
     "TurnPlannerDecision",
     "TurnTrace",

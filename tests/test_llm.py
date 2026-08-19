@@ -222,7 +222,16 @@ class FakeLLM:
 
     def complete_json(self, **kwargs):
         self.calls.append(kwargs)
-        return LLMResult(data=self.output, latency_ms=3, input_tokens=10, output_tokens=5)
+        data = self.output
+        if kwargs.get("schema_name") == "DialogueTurnOutput":
+            data = {
+                "beats": ["“关于你问的部分，我会把能确定的都告诉你。”对方直接回应。"],
+                "used_fact_ids": [],
+                "proposed_facts": [],
+                "answered_query_parts": [],
+                "unresolved_query_parts": [kwargs["user_payload"]["player_input"]],
+            }
+        return LLMResult(data=data, latency_ms=3, input_tokens=10, output_tokens=5)
 
 
 def _player_intent(text: str) -> ActionIntent:
@@ -485,7 +494,7 @@ def test_follow_up_question_cannot_be_keyword_routed_to_false_ending():
 
     resolved, resolution = engine.play(state, text="他们在房子里住了多久？")
 
-    assert len(llm.calls) == 1
+    assert len(llm.calls) == 2
     assert resolution.accepted is True
     assert resolution.action_id.startswith("open__")
     assert resolved.status == SessionStatus.ACTIVE

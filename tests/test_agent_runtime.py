@@ -5,6 +5,7 @@ from copy import deepcopy
 from living_tabletop.agent_runtime import (
     ContextAssembler,
     DisclosurePolicy,
+    DialogueTurnOutput,
     GroundingValidator,
     KnowledgeQuery,
     KnowledgeResolver,
@@ -12,6 +13,7 @@ from living_tabletop.agent_runtime import (
     PlanValidator,
     PlanValidationError,
     PlayerIntentEnvelope,
+    SoftFactValidator,
     TurnPlannerDecision,
 )
 import pytest
@@ -23,6 +25,7 @@ from living_tabletop.models import (
     ActionDefinition,
     ActionType,
     CheckOutcome,
+    Fact,
     LLMResult,
     NarrativeBeat,
     NarrativeSequence,
@@ -43,7 +46,61 @@ class PlannerLLM:
 
     def complete_json(self, **kwargs):
         self.calls.append(kwargs)
+        if kwargs.get("schema_name") == "DialogueTurnOutput":
+            evidence = kwargs["user_payload"].get("disclosable_evidence") or []
+            questions = kwargs["user_payload"].get("question_parts") or []
+            if evidence:
+                first = evidence[0]
+                return LLMResult(
+                    data={
+                        "beats": [f"“{first['value']}”对方直接回答。"],
+                        "used_fact_ids": [first["fact_id"]],
+                        "proposed_facts": [],
+                        "answered_query_parts": questions,
+                        "unresolved_query_parts": [],
+                    },
+                    latency_ms=3,
+                    input_tokens=20,
+                    output_tokens=20,
+                )
+            return LLMResult(
+                data={
+                    "beats": ["“这件事我确实不知道。”对方坦率地回答。"],
+                    "used_fact_ids": [],
+                    "proposed_facts": [],
+                    "answered_query_parts": [],
+                    "unresolved_query_parts": questions,
+                },
+                latency_ms=3,
+                input_tokens=20,
+                output_tokens=20,
+            )
         return LLMResult(data=deepcopy(self.output), latency_ms=3, input_tokens=20, output_tokens=20)
+
+
+class DialogueRoutingLLM:
+    enabled = True
+
+    def __init__(self, planner_output: dict, dialogue_output: dict):
+        self.planner_output = planner_output
+        self.dialogue_output = dialogue_output
+        self.calls: list[dict] = []
+
+    def complete_json(self, **kwargs):
+        self.calls.append(kwargs)
+        output = (
+            self.dialogue_output
+            if kwargs.get("schema_name") == "DialogueTurnOutput"
+            else self.planner_output
+        )
+        return LLMResult(data=deepcopy(output), latency_ms=3, input_tokens=20, output_tokens=20)
+
+
+class FailingDialogueLLM(DialogueRoutingLLM):
+    def complete_json(self, **kwargs):
+        if kwargs.get("schema_name") == "DialogueTurnOutput":
+            raise LLMUnavailable("dialogue provider unavailable")
+        return super().complete_json(**kwargs)
 
 
 def _question_output(text: str, *, target_id: str, target_name: str) -> dict:
@@ -513,6 +570,214 @@ def test_unknown_npc_answer_does_not_fabricate_or_reveal_a_fact():
     assert "不知道" in resolution.narrative_seed
     assert resolution.outcome_envelope["disclosed_facts"] == []
     assert resolved.turn_traces[-1]["disclosure"]["mode"] == "unknown"
+
+
+def test_dialogue_agent_can_create_persist_and_retrieve_missing_soft_location_fact(tmp_path):
+    scenario, state = _haunting_state()
+    engine = GameEngine(scenario, OpenAICompatibleLLM(LLMSettings(enabled=False, api_key=None)))
+    state, introduced = engine.play(state, action_id="cafe_question_knott")
+    assert introduced.accepted is True
+
+    text = "他们现在都在疗养院？疗养院在哪儿？"
+    planner_output = {
+        "existing_action_id": None,
+        "confidence": 0.98,
+        "open_plan": {
+            "label": "询问疗养院位置",
+            "action_type": "TALK",
+            "goal": text,
+            "target_name": "史蒂文·诺特",
+            "target_entity_id": "npc_knott",
+            "addressee_id": "npc_knott",
+            "duration_minutes": 2,
+            "resolution": "automatic",
+            "risk": "safe",
+            "speech_act": "question",
+            "referents": [
+                {"mention": "疗养院", "entity_id": "loc_sanitarium", "confidence": 1.0}
+            ],
+            "knowledge_query": {
+                "query_text": text,
+                "asker_id": "player",
+                "addressee_id": "npc_knott",
+                "subject_entity_ids": ["npc_gabriela", "loc_sanitarium"],
+                "atoms": [
+                    {
+                        "id": "parents_status",
+                        "query_text": "他们现在都在疗养院吗",
+                        "subject_entity_ids": ["npc_gabriela"],
+                        "predicate_hints": ["parents_status"],
+                        "relation_types": ["status"],
+                    },
+                    {
+                        "id": "sanitarium_address",
+                        "query_text": "罗克斯伯里疗养院在哪儿",
+                        "subject_entity_ids": ["loc_sanitarium"],
+                        "predicate_hints": ["address"],
+                        "relation_types": ["location"],
+                    },
+                ],
+                "max_results": 3,
+            },
+        },
+    }
+    dialogue_output = {
+        "beats": [
+            "“是的，马卡里奥夫妇目前都在那里。”诺特点头确认。",
+            "“疗养院在罗克斯伯里区华盛顿街附近，从这里乘电车过去并不远。”",
+        ],
+        "used_fact_ids": ["f_macario_parents_status"],
+        "proposed_facts": [
+            {
+                "subject_entity_id": "loc_sanitarium",
+                "predicate": "address",
+                "value": "罗克斯伯里区华盛顿街附近",
+                "confidence": 0.9,
+            }
+        ],
+        "answered_query_parts": ["他们现在都在疗养院吗", "罗克斯伯里疗养院在哪儿"],
+        "unresolved_query_parts": [],
+    }
+    llm = DialogueRoutingLLM(planner_output, dialogue_output)
+    engine = GameEngine(scenario, llm)
+
+    resolved, resolution = engine.play(state, text=text)
+
+    generated = next(
+        fact
+        for fact in resolved.facts.values()
+        if fact.subject == "loc_sanitarium" and fact.predicate == "address"
+    )
+    assert generated.value == "罗克斯伯里区华盛顿街附近"
+    assert generated.canon == "soft_canon"
+    assert generated.immutable is False
+    assert generated.id in resolved.player_known_fact_ids
+    assert any(
+        item.knower_id == "npc_knott" and item.fact_id == generated.id
+        for item in resolved.npc_knowledge
+    )
+    assert resolution.narrative_seed == "\n\n".join(dialogue_output["beats"])
+    assert resolved.narrative_sequence is not None
+    assert resolved.narrative_sequence.status == "ready"
+    assert [beat.text for beat in resolved.narrative_sequence.beats] == dialogue_output["beats"]
+    assert resolved.turn_traces[-1]["dialogue"] == dialogue_output
+    assert any(event.type == "fact_created" and event.target == generated.id for event in resolved.event_log)
+
+    follow_up = KnowledgeQuery(
+        query_text="罗克斯伯里疗养院的地址在哪里？",
+        asker_id="player",
+        addressee_id="npc_knott",
+        subject_entity_ids=["loc_sanitarium"],
+        predicate_hints=["address"],
+        atoms=[
+            {
+                "id": "address",
+                "query_text": "罗克斯伯里疗养院的地址在哪里？",
+                "subject_entity_ids": ["loc_sanitarium"],
+                "predicate_hints": ["address"],
+                "relation_types": ["location"],
+            }
+        ],
+    )
+    retrieved = KnowledgeResolver().retrieve(resolved, follow_up)
+    assert retrieved and retrieved[0].fact_id == generated.id
+
+    repository = SQLiteRepository(tmp_path / "dialogue-soft-fact-replay.db")
+    repository.save(resolved)
+    verified, expected, actual = verify_replay(repository.export(resolved.session_id), scenario)
+    assert verified, (expected, actual)
+
+
+def test_soft_fact_validator_rejects_conflict_with_established_world_detail():
+    _scenario, state = _haunting_state()
+    state.facts["f_existing_address"] = Fact(
+        id="f_existing_address",
+        subject="loc_sanitarium",
+        predicate="address",
+        value="罗克斯伯里区旧大道十号",
+        visibility="PLAYER",
+        created_at=state.world_time,
+        source="scenario",
+        immutable=True,
+        canon="hard_canon",
+    )
+    state.player_known_fact_ids.add("f_existing_address")
+    output = DialogueTurnOutput.model_validate(
+        {
+            "beats": ["“疗养院在罗克斯伯里区新街二号。”诺特回答。"],
+            "used_fact_ids": [],
+            "proposed_facts": [
+                {
+                    "subject_entity_id": "loc_sanitarium",
+                    "predicate": "address",
+                    "value": "罗克斯伯里区新街二号",
+                    "confidence": 0.9,
+                }
+            ],
+            "answered_query_parts": ["疗养院在哪里"],
+            "unresolved_query_parts": [],
+        }
+    )
+
+    with pytest.raises(ValueError, match="conflicts with established canon"):
+        SoftFactValidator().validate(
+            state,
+            output,
+            speaker_id="npc_knott",
+            allowed_entity_ids={"npc_knott", "loc_sanitarium"},
+            allowed_fact_ids=set(),
+        )
+
+
+def test_dialogue_output_repairs_qwen_duplicate_ascii_quote_separator():
+    output = DialogueTurnOutput.model_validate(
+        {
+            "beats": [
+                '"他们都在那里。"诺特攥紧钥匙，", "至于地址……"他停顿片刻，'
+                '"就在市中心偏北。"'
+            ]
+        }
+    )
+
+    assert output.beats == [
+        "“他们都在那里。”诺特攥紧钥匙，“至于地址……”他停顿片刻，“就在市中心偏北。”"
+    ]
+
+
+def test_dialogue_failure_does_not_commit_a_partial_turn():
+    scenario, state = _haunting_state()
+    offline = OpenAICompatibleLLM(LLMSettings(enabled=False, api_key=None))
+    state, introduced = GameEngine(scenario, offline).play(
+        state,
+        action_id="cafe_question_knott",
+    )
+    assert introduced.accepted is True
+    snapshot = state.model_dump(mode="json")
+    text = "诺特先生，今天的天气怎么样？"
+    planner_output = {
+        "existing_action_id": None,
+        "confidence": 0.99,
+        "open_plan": {
+            "label": "谈论天气",
+            "action_type": "TALK",
+            "goal": text,
+            "target_name": "史蒂文·诺特",
+            "target_entity_id": "npc_knott",
+            "addressee_id": "npc_knott",
+            "duration_minutes": 2,
+            "resolution": "automatic",
+            "risk": "safe",
+            "speech_act": "smalltalk",
+            "referents": [],
+            "knowledge_query": None,
+        },
+    }
+    llm = FailingDialogueLLM(planner_output, {})
+
+    with pytest.raises(LLMUnavailable, match="dialogue provider unavailable"):
+        GameEngine(scenario, llm).play(state, text=text)
+
+    assert state.model_dump(mode="json") == snapshot
 
 
 def test_concealed_npc_knowledge_requires_a_roll_and_only_success_reveals():

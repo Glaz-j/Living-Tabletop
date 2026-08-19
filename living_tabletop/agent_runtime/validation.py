@@ -215,4 +215,5 @@ class PlanValidator:
             rest_day_offset=plan.rest_day_offset,
             success_text=success,
             failure_text=failure,
+            speech_act=plan.speech_act,
         )

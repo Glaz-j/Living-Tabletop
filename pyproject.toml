@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "living-tabletop"
 version = "0.1.0"
-description = "Simulation-first AI TTRPG demo with a constrained Director Agent"
+description = "LLM-first, world-guarded AI TTRPG demo with persistent soft canon"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
