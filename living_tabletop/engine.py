@@ -677,7 +677,7 @@ class GameEngine:
             skill=plan.skill if plan.resolution == "check" else None,
             difficulty=plan.difficulty,
             pushable=plan.resolution == "check",
-            success_effects=[*generated_fact_effects, *disclosure_effects],
+            success_effects=[*plan.world_effects, *generated_fact_effects, *disclosure_effects],
             success_text=plan.success_text,
             failure_text=plan.failure_text,
             success_beats=plan.success_beats,
@@ -734,6 +734,7 @@ class GameEngine:
                 "answered_query_parts": plan.answered_query_parts,
                 "unanswered_query_parts": plan.unanswered_query_parts,
                 "generated_fact_ids": [fact.id for fact in plan.generated_facts],
+                "world_effect_ops": [effect.op for effect in plan.world_effects],
             },
             visible=True,
         )
@@ -1533,6 +1534,20 @@ class GameEngine:
                                 str(event.target)
                                 for event in events
                                 if event.type == "flag_changed" and event.target
+                            }
+                        ),
+                        "acquired_item_ids": sorted(
+                            {
+                                str(event.target)
+                                for event in events
+                                if event.type == "item_acquired" and event.target
+                            }
+                        ),
+                        "removed_item_ids": sorted(
+                            {
+                                str(event.target)
+                                for event in events
+                                if event.type == "item_removed" and event.target
                             }
                         ),
                     },

@@ -21,6 +21,7 @@ from .contracts import (
 )
 from .dialogue import DialogueValidationError, SoftFactValidator
 from .validation import PlanValidationError, PlanValidator
+from .world_changes import ItemChangeValidationError, ItemChangeValidator
 
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ class TurnComposer:
         self.context_assembler = ContextAssembler()
         self.plan_validator = PlanValidator()
         self.fact_validator = SoftFactValidator()
+        self.item_change_validator = ItemChangeValidator()
 
     @staticmethod
     def _performance_from_raw(data: dict[str, Any]) -> list[str]:
@@ -223,6 +225,7 @@ class TurnComposer:
         allowed_entity_ids = {state.player.entity_id}
         allowed_entity_ids.update(item["id"] for item in context.present_entities)
         allowed_entity_ids.update(item["id"] for item in context.referenced_entities)
+        allowed_entity_ids.update(item["id"] for item in context.inventory)
         if context.scene.get("id"):
             allowed_entity_ids.add(str(context.scene["id"]))
 
@@ -305,6 +308,23 @@ class TurnComposer:
         plan.failure_text = "\n\n".join(failure_beats)[:1200]
         plan.dialogue_complete = True
         plan.generated_facts = generated_facts
+        try:
+            item_changes = self.item_change_validator.materialize(
+                state,
+                output.proposed_item_changes,
+                performance=success_beats,
+                allowed_entity_ids=allowed_entity_ids,
+            )
+        except ItemChangeValidationError as error:
+            logger.info("Turn Composer rejected an item world change: %s", error)
+            raise LLMUnavailable(
+                "Turn Composer proposed an invalid item world change",
+                public_message=(
+                    "模型描述了无法可靠写入世界状态的物品交接，本轮行动没有提交。"
+                    "请重试这一轮。"
+                ),
+            ) from error
+        plan.world_effects = item_changes.effects
         plan.approved_fact_ids = used_fact_ids
         plan.knowledge_source_id = speaker_id
         plan.disclosure_mode = "automatic" if used_fact_ids else None
@@ -338,7 +358,13 @@ class TurnComposer:
                 ],
                 "soft_fact_rule": (
                     "Unknown low-stakes details may be invented and proposed; never invent clues, "
-                    "secret causes, inventory, stats, success at risky actions, or location changes."
+                    "secret causes, stats, success at risky actions, or location changes. Inventory "
+                    "may change only through proposed_item_changes."
+                ),
+                "item_change_rule": (
+                    "If the visible success performance gives the player an item or removes one, "
+                    "emit exactly one matching proposed_item_changes entry. Use a context entity id "
+                    "for an existing item and null for a newly introduced item. Never emit effects."
                 ),
             },
             "performance_contract": {
@@ -364,7 +390,9 @@ class TurnComposer:
             "recent_visible_history 是原始对话主记忆，不能混淆 player 与 NPC 的说话者。"
             "present_npc_knowledge 是在场 NPC 可使用的事实；used_fact_ids 只能引用这里或玩家已知事实。"
             "如果地址、路线、营业时间、习惯等低风险细节尚未定义，可以自然编写并通过 proposed_facts 建议保存；"
-            "不得虚构关键线索、幕后真相、检定成功、物品、伤害、理智、时间或位置变化。"
+            "可以让角色赠送、拾取、购买、交还或消耗普通物品，但每一处可见的物品得失都必须在 "
+            "proposed_item_changes 中逐项声明；新物品的 item_entity_id 必须为 null，已有物品只能使用上下文给出的 id。"
+            "不要直接输出内核 Effect，也不得虚构关键线索、幕后真相、检定成功、伤害、理智、时间或位置变化。"
             "若选择 existing_action_id，它必须完整匹配玩家意图；否则输出 open_plan。"
             "open_plan.goal 必须逐字等于 player_text_verbatim。只有玩家明确承诺移动时才可 MOVE/ESCAPE/带目的地的 REST。"
             "有真实风险时才选择 check，并同时写成功与失败演出；世界内核稍后只展示实际分支。"

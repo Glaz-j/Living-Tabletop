@@ -655,6 +655,9 @@ class OpenActionPlan(DomainModel):
     failure_beats: list[str] = Field(default_factory=list, max_length=4)
     dialogue_complete: bool = False
     generated_facts: list[Fact] = Field(default_factory=list, max_length=6)
+    # These effects are materialized exclusively by server-side world-change
+    # validators.  They are never accepted from the LLM planner contract.
+    world_effects: list[Effect] = Field(default_factory=list, max_length=24)
     speech_act: Literal[
         "none", "question", "statement", "request", "smalltalk", "deception", "threat"
     ] = "none"

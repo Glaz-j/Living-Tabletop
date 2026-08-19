@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .engine import GameEngine
 from .harness import StructuredHarness
 from .llm import LLMResult, LLMUnavailable, OpenAICompatibleLLM
-from .models import RuleChoice, ScenarioDefinition, SessionStatus, WorldState
+from .models import EntityType, RuleChoice, ScenarioDefinition, SessionStatus, WorldState
 from .scenario import create_initial_state
 
 
@@ -29,19 +29,40 @@ PERSONAS: tuple[TestPersona, ...] = (
         "immersive",
         "沉浸派演员",
         "始终用第一人称入戏，重视人物情绪和关系连续性。",
-        {"roleplay": 5, "followup": 4, "smalltalk": 2, "mixed": 2, "location": 1},
+        {
+            "roleplay": 5,
+            "followup": 4,
+            "smalltalk": 2,
+            "mixed": 2,
+            "location": 1,
+            "inventory": 2,
+        },
     ),
     TestPersona(
         "mischief",
         "调皮捣蛋鬼",
         "喜欢碰边角物件、说怪话、临时改主意，但不会照按钮走。",
-        {"mischief": 6, "ambiguous": 3, "derail": 3, "mixed": 2, "smalltalk": 1},
+        {
+            "mischief": 6,
+            "ambiguous": 3,
+            "derail": 3,
+            "mixed": 2,
+            "smalltalk": 1,
+            "inventory": 3,
+        },
     ),
     TestPersona(
         "bug_hunter",
         "极限找茬者",
         "专门提出复合问题、指代追问和容易被误判的否定句。",
-        {"multipart": 6, "location": 5, "memory": 4, "ambiguous": 3, "negotiation": 2},
+        {
+            "multipart": 6,
+            "location": 5,
+            "memory": 4,
+            "ambiguous": 3,
+            "negotiation": 2,
+            "inventory": 3,
+        },
     ),
     TestPersona(
         "negotiator",
@@ -65,13 +86,27 @@ PERSONAS: tuple[TestPersona, ...] = (
         "chaotic",
         "混沌即兴者",
         "把动作、对话和临时目标揉在同一句里，期待世界自然承接。",
-        {"mixed": 7, "mischief": 4, "derail": 3, "multipart": 3, "roleplay": 2},
+        {
+            "mixed": 7,
+            "mischief": 4,
+            "derail": 3,
+            "multipart": 3,
+            "roleplay": 2,
+            "inventory": 5,
+        },
     ),
     TestPersona(
         "continuity",
         "连续性审计员",
         "不断引用刚发生的原话、数字与对象，寻找说话者颠倒和失忆。",
-        {"memory": 7, "followup": 5, "negotiation": 3, "multipart": 2, "ambiguous": 2},
+        {
+            "memory": 7,
+            "followup": 5,
+            "negotiation": 3,
+            "multipart": 2,
+            "ambiguous": 2,
+            "inventory": 4,
+        },
     ),
 )
 
@@ -102,7 +137,7 @@ class HeuristicPlayerDriver:
         self.random = random.Random(seed ^ 0xA61E)
 
     @staticmethod
-    def _scene_parts(view: dict[str, Any]) -> tuple[str, str, str]:
+    def _scene_parts(view: dict[str, Any]) -> tuple[str, str, str, list[str]]:
         scene = view.get("scene", {})
         visual = scene.get("visual", {}) or {}
         actors = visual.get("actors", []) or []
@@ -114,7 +149,8 @@ class HeuristicPlayerDriver:
             if exits
             else "城里的疗养院"
         )
-        return npc, place, destination
+        inventory = [str(item) for item in (view.get("player", {}).get("inventory") or [])]
+        return npc, place, destination, inventory
 
     def _choose_probe(self, persona: TestPersona) -> str:
         names = list(persona.probe_weights)
@@ -130,7 +166,7 @@ class HeuristicPlayerDriver:
         previous_inputs: list[str],
         previous_output: str,
     ) -> ProposedPlayerTurn:
-        npc, place, destination = self._scene_parts(public_view)
+        npc, place, destination, inventory = self._scene_parts(public_view)
         probe = self._choose_probe(persona)
         tail = re.sub(r"\s+", "", previous_output)[-18:] if previous_output else "刚才那件事"
         variants: dict[str, list[tuple[str, list[str]]]] = {
@@ -146,7 +182,7 @@ class HeuristicPlayerDriver:
             ],
             "followup": [
                 (f"等等，{npc}，你刚才那句话具体是什么意思？", ["nonempty_reply"]),
-                (f"那然后呢？别换话题，把刚才没说完的接着说。", ["nonempty_reply"]),
+                ("那然后呢？别换话题，把刚才没说完的接着说。", ["nonempty_reply"]),
                 (f"你提到的“{tail}”是亲眼看见的，还是听别人说的？", ["nonempty_reply"]),
             ],
             "location": [
@@ -157,7 +193,7 @@ class HeuristicPlayerDriver:
             "negotiation": [
                 (f"我对{npc}说：这个价钱不够，风险比你一开始讲的大，得加钱。", ["speaker_roles_preserved", "nonempty_reply"]),
                 (f"我追问{npc}：你说‘可以商量’，那具体愿意再加多少？", ["speaker_roles_preserved", "nonempty_reply"]),
-                (f"我摇头：别再重复委托内容，先正面回答报酬能不能提高。", ["nonempty_reply"]),
+                ("我摇头：别再重复委托内容，先正面回答报酬能不能提高。", ["nonempty_reply"]),
             ],
             "mischief": [
                 (f"我突然敲了敲{place}里最近的木头表面，贴过去听它会不会回敲。", []),
@@ -190,6 +226,37 @@ class HeuristicPlayerDriver:
                 (f"我走到窗边看看天色，仍留在{place}，回头问{npc}刚才是不是撒谎。", ["no_location_change", "nonempty_reply"]),
                 (f"我先向{npc}道歉，又立刻追问{destination}的地址，但明确说今天不去。", ["no_location_change", "nonempty_reply"]),
             ],
+            "inventory": (
+                [
+                    (
+                        f"我把随身的{inventory[0]}拿出来确认了一眼，又原样收好；它现在仍归我保管，对吧？",
+                        ["inventory_unchanged", "nonempty_reply"],
+                    ),
+                    (
+                        f"我把{inventory[0]}递还给{npc}，请他收好，我不再带着它。",
+                        ["inventory_loss", "nonempty_reply"],
+                    ),
+                    (
+                        f"我摸了摸口袋里的{inventory[0]}，问{npc}：这就是刚才交给我的那件东西吗？",
+                        ["inventory_unchanged", "nonempty_reply"],
+                    ),
+                ]
+                if inventory
+                else [
+                    (
+                        f"我问{npc}能不能给我一支普通铅笔备用；对方若愿意，我就当场接过并收进口袋。",
+                        ["inventory_gain", "nonempty_reply"],
+                    ),
+                    (
+                        "我从桌边捡起一枚不起眼的黄铜书签，确认无人反对后把它收进口袋。",
+                        ["inventory_gain", "nonempty_reply"],
+                    ),
+                    (
+                        f"我请{npc}借我一把没有特殊来历的小折刀，并明确接过来随身收好。",
+                        ["inventory_gain", "nonempty_reply"],
+                    ),
+                ]
+            ),
         }
         choices = variants[probe]
         offset = (turn + len(previous_inputs) + self.random.randrange(len(choices))) % len(choices)
@@ -239,7 +306,7 @@ class LLMPlayerDriver:
                 system=(
                     "你是破坏性但公平的 TRPG 测试玩家。严格扮演 persona，依据当前公开画面自由输入，"
                     "不要沿默认脚本、不要输出 action_id、不要重复 recent_inputs。"
-                    "probe 可用 location/smalltalk/followup/negotiation/memory/multipart/mischief/derail/mixed。"
+                    "probe 可用 location/smalltalk/followup/negotiation/memory/multipart/mischief/derail/mixed/inventory。"
                     "只在纯提问明确不授权移动时添加 no_location_change；所有对话添加 nonempty_reply。"
                 ),
                 user_payload=payload,
@@ -290,22 +357,114 @@ class SyntheticComposerLLM:
         npc = present[0] if present else None
         question = bool(re.search(r"[?？]|什么|怎么|哪里|哪儿|谁|多久|多少|吗|呢", text))
         explicit_move = bool(
-            re.search(r"(?:我|我们).{0,12}(?:去|前往|离开|回家|返回|走到|进入)", text)
+            re.search(
+                r"(?:我|我们)(?:决定|打算|准备|现在|立刻|马上|想(?:要)?).{0,24}"
+                r"(?:去|前往|离开|回家|返回|进入)",
+                text,
+            )
             and not re.search(
-                r"(?:不去|没说要去|只是问|暂时不去|今天不去|并没有说要去|仍留在|不离开)",
+                r"(?:不去|没说要去|只是问|暂时不去|今天不去|并没有说要去|仍留在|不离开|愿不愿意)",
                 text,
             )
         )
         knowledge = context.get("present_npc_knowledge", [])
+        inventory = context.get("inventory", []) or []
         used_fact_ids: list[str] = []
         proposed_facts: list[dict[str, Any]] = []
+        proposed_item_changes: list[dict[str, Any]] = []
         answered: list[str] = []
         unresolved: list[str] = []
 
-        if explicit_move:
+        acquire_match = re.search(r"(普通铅笔|黄铜书签|小折刀)", text)
+        acquiring = bool(
+            acquire_match
+            and re.search(r"(?:给我一支|借我一把|从桌边捡起|明确接过来)", text)
+        )
+        relinquish_item = next(
+            (item for item in inventory if str(item.get("name", "")) in text),
+            None,
+        )
+        relinquishing = bool(
+            relinquish_item
+            and re.search(
+                r"(?:我把.{0,40}(?:递还|交还|交给(?!我的))|我不再带|请.{0,12}收好)",
+                text,
+            )
+        )
+
+        if relinquishing:
+            item_name = str(relinquish_item["name"])
+            npc_name = str(npc["name"]) if npc else "在场的人"
+            performance = [f"你将{item_name}递还给{npc_name}；对方接过它，确认你已不再携带。"]
+            proposed_item_changes = [
+                {
+                    "operation": "relinquish",
+                    "item_entity_id": relinquish_item["id"],
+                    "item_name": item_name,
+                    "item_kind": "misc",
+                    "counterparty_entity_id": npc["id"] if npc else None,
+                    "origin": "return" if npc else "discard",
+                    "description": "玩家此前随身携带的物品。",
+                    "reason": "玩家明确交还或放弃该物品",
+                }
+            ]
+            plan = {
+                "label": f"交还{item_name}",
+                "action_type": "TALK" if npc else "OTHER",
+                "goal": text,
+                "target_name": npc_name if npc else None,
+                "target_entity_id": npc["id"] if npc else None,
+                "duration_minutes": 1,
+                "resolution": "automatic",
+                "risk": "safe",
+                "speech_act": "statement",
+                "addressee_id": npc["id"] if npc else None,
+            }
+        elif acquiring and acquire_match:
+            item_name = acquire_match.group(1)
+            pickup = "捡起" in text
+            counterparty = None if pickup else npc
+            npc_name = str(counterparty["name"]) if counterparty else None
+            if counterparty:
+                performance = [f"{npc_name}同意了你的请求，将一件{item_name}递给你；你接过{item_name}并收进口袋。"]
+            else:
+                performance = [f"你从桌边拿起一件{item_name}，确认无主后将它收进口袋。"]
+            proposed_item_changes = [
+                {
+                    "operation": "acquire",
+                    "item_entity_id": None,
+                    "item_name": item_name,
+                    "item_kind": "weapon" if item_name == "小折刀" else "tool",
+                    "counterparty_entity_id": counterparty["id"] if counterparty else None,
+                    "origin": "gift" if counterparty else "pickup",
+                    "description": f"一件没有特殊背景的{item_name}。",
+                    "reason": "演出明确描述玩家接过或拾取并随身收好",
+                }
+            ]
+            plan = {
+                "label": f"取得{item_name}",
+                "action_type": "TALK" if counterparty else "OTHER",
+                "goal": text,
+                "target_name": npc_name,
+                "target_entity_id": counterparty["id"] if counterparty else None,
+                "duration_minutes": 1,
+                "resolution": "automatic",
+                "risk": "safe",
+                "speech_act": "request" if counterparty else "none",
+                "addressee_id": counterparty["id"] if counterparty else None,
+            }
+        elif explicit_move:
             action_type = "REST" if "睡" in text or "休息" in text else "MOVE"
-            performance = ["你按自己的决定离开眼前事务，街上的声响很快接替了室内的低语。"]
-            destination = "调查员临时选择的去处"
+            destination = (
+                "调查员的住处"
+                if "回家" in text
+                else "城中书店"
+                if "书店" in text
+                else "调查员临时选择的去处"
+            )
+            performance = [
+                f"你按自己的决定前往{destination}；这次关于“{topic}”的选择，让街上的声响接替了室内低语。"
+            ]
             plan = {
                 "label": "按玩家决定离开当前地点",
                 "action_type": action_type,
@@ -333,8 +492,22 @@ class SyntheticComposerLLM:
                     None,
                 )
                 if referenced:
-                    route = "在罗克斯伯里区旧电车总站北侧，沿石墙走到第二个路口"
-                    performance = [f"“{route}。你到了那里再问门房就不会走错。”{npc_name}回答。"]
+                    route_by_location = {
+                        "loc_sanitarium": "在罗克斯伯里区旧电车总站北侧，沿石墙走到第二个路口",
+                        "loc_basement": "入口在医院主楼北侧的锅炉间旁，沿向下的砖阶走到底",
+                        "loc_chapel": "在市区北缘的旧教堂街尽头，越过烧毁的石墙就能看见",
+                    }
+                    route = route_by_location.get(
+                        str(referenced["id"]),
+                        f"{referenced['name']}在当前街区北侧，沿主路走到第二个路口即可找到",
+                    )
+                    travel_minutes = 5 if referenced["id"] == "loc_basement" else 20
+                    if "三个问题" in text or "要走多久" in text:
+                        performance = [
+                            f"“{route}；从这里通常要走{travel_minutes}分钟。至于现在能否探视，我得先替你确认。”{npc_name}逐项回答。"
+                        ]
+                    else:
+                        performance = [f"“{route}。你到了那里再问门房就不会走错。”{npc_name}回答。"]
                     proposed_facts = [
                         {
                             "subject_entity_id": referenced["id"],
@@ -347,6 +520,22 @@ class SyntheticComposerLLM:
                 else:
                     performance = [f"“我不知道确切地址，不想拿猜测骗你。”{npc_name}坦率地说。"]
                     unresolved = [text]
+            elif "不要重讲" in text or "接下去" in text:
+                performance = [
+                    f"{npc_name}没有重讲开头，而是从你指出的“{topic}”继续往下说。",
+                    "“接下来我能补充的，是我亲眼确认过的部分；不确定的地方我会明确告诉你。”",
+                ]
+            elif fact and re.search(
+                r"亲眼(?:看见|见到)|听别人说|从哪(?:里|儿)知道",
+                text,
+            ):
+                used_fact_ids.append(fact["fact_id"])
+                answer = str(fact["value"])
+                performance = [
+                    f"{npc_name}先说明消息来源，再重复关键事实。",
+                    f"“这不是我此刻亲眼看见的，而是我根据先前掌握的记录得知的：{answer}。”",
+                ]
+                answered = [text]
             elif fact:
                 used_fact_ids.append(fact["fact_id"])
                 answer = str(fact["value"])
@@ -354,7 +543,7 @@ class SyntheticComposerLLM:
                 answered = [text]
             elif "钱" in text or "报酬" in text or "价钱" in text:
                 performance = [
-                    f"{npc_name}把手指从杯沿移开，重新衡量你的条件。",
+                    f"{npc_name}听清你这次关于“{topic}”的条件，把手指从杯沿移开。",
                     "“你说得对，风险比我最初描述的大。价钱可以再谈，但我要先知道你希望加到多少。”",
                 ]
             elif question:
@@ -392,11 +581,13 @@ class SyntheticComposerLLM:
             }
             if question and re.search(r"地址|哪里|哪儿|什么地方|怎么走|城南|城北", text):
                 performance = [
-                    "现场没有人在场回答，而你掌握的资料也不足以确定具体地址。"
+                    f"现场没有人在场回答你关于“{topic}”的问路，而现有资料也不足以确定具体地址。"
                 ]
                 unresolved = [text]
             else:
-                performance = ["你的动作在当前场景里留下了清楚的痕迹，环境随之给出细微回应。"]
+                performance = [
+                    f"你这次关于“{topic}”的动作在当前场景里留下清楚痕迹，环境随之给出细微回应。"
+                ]
 
         output = {
             "decision": {
@@ -408,6 +599,7 @@ class SyntheticComposerLLM:
             "failure_performance": [],
             "used_fact_ids": used_fact_ids,
             "proposed_facts": proposed_facts,
+            "proposed_item_changes": proposed_item_changes,
             "answered_query_parts": answered,
             "unresolved_query_parts": unresolved,
         }
@@ -434,6 +626,9 @@ class TestAgentStep:
     invariants: list[str]
     location_before: str | None
     location_after: str | None
+    inventory_before: list[str]
+    inventory_after: list[str]
+    event_types: list[str]
     version_before: int
     version_after: int
     accepted: bool
@@ -542,6 +737,85 @@ class TestAgentRunner:
     def _normalized(text: str) -> str:
         return re.sub(r"[\W_]+", "", text, flags=re.UNICODE).lower()
 
+    @classmethod
+    def _utterance_core(cls, text: str) -> str:
+        text = re.sub(
+            r"^(?:换句话说|我想了想又补充|这次我说得更明确些|我压低声音|我再换一种自然说法)[，：:]?",
+            "",
+            text.strip(),
+        )
+        return cls._normalized(text)
+
+    @staticmethod
+    def _world_state_errors(state: WorldState) -> list[tuple[str, str]]:
+        errors: list[tuple[str, str]] = []
+        player_entity = state.entities.get(state.player.entity_id)
+        if player_entity is None:
+            return [("player_entity_missing", "player entity is absent from world state")]
+        if player_entity.location not in state.entities:
+            errors.append(
+                (
+                    "player_location_missing",
+                    f"player location does not exist: {player_entity.location}",
+                )
+            )
+        if len(state.player.inventory) != len(set(state.player.inventory)):
+            errors.append(("duplicate_inventory_id", "inventory contains duplicate entity ids"))
+        for item_id in state.player.inventory:
+            item = state.entities.get(item_id)
+            if item is None:
+                errors.append(("inventory_entity_missing", f"missing inventory entity: {item_id}"))
+                continue
+            if item.type != EntityType.ITEM:
+                errors.append(("inventory_entity_wrong_type", f"inventory entity is not ITEM: {item_id}"))
+            if not item.active:
+                errors.append(("inactive_inventory_item", f"inactive item remains carried: {item_id}"))
+            if item.location != state.player.entity_id:
+                errors.append(
+                    (
+                        "inventory_location_mismatch",
+                        f"carried item {item_id} is located at {item.location}",
+                    )
+                )
+        try:
+            WorldState.model_validate(state.model_dump(mode="json"))
+        except Exception as error:
+            errors.append(
+                ("world_state_roundtrip_failed", f"{type(error).__name__}: {error}")
+            )
+        return errors
+
+    @classmethod
+    def _speaker_role_reversed(
+        cls,
+        player_text: str,
+        narrative: str,
+        npc_names: list[str],
+    ) -> bool:
+        spoken = re.split(r"(?:说|问|回答)[：:]", player_text, maxsplit=1)
+        if len(spoken) < 2:
+            return False
+        player_line = cls._normalized(spoken[-1])
+        if len(player_line) < 6:
+            return False
+        for quote in re.findall(r"[“\"]([^”\"]+)[”\"]", narrative):
+            normalized_quote = cls._normalized(quote)
+            if len(normalized_quote) < 6:
+                continue
+            overlap = min(len(player_line), len(normalized_quote))
+            if overlap and (
+                player_line in normalized_quote or normalized_quote in player_line
+            ):
+                if any(
+                    re.search(
+                        rf"(?:{re.escape(name)}.{{0,12}}(?:说|回答|问)|(?:说|回答|问).{{0,12}}{re.escape(name)})",
+                        narrative,
+                    )
+                    for name in npc_names
+                ):
+                    return True
+        return False
+
     def _issue(
         self,
         run: TestAgentRun,
@@ -582,13 +856,16 @@ class TestAgentRunner:
         )
         inputs: list[str] = []
         previous_output = ""
+        previous_probe = ""
+        previous_input = ""
         for turn in range(1, max_turns + 1):
             if state.status != SessionStatus.ACTIVE:
                 break
+            public_view = self.engine.public_view(state)
             proposed = self.driver.propose(
                 persona=persona,
                 turn=turn,
-                public_view=self.engine.public_view(state),
+                public_view=public_view,
                 previous_inputs=inputs,
                 previous_output=previous_output,
             )
@@ -598,7 +875,7 @@ class TestAgentRunner:
                 proposed = self.driver.propose(
                     persona=persona,
                     turn=turn,
-                    public_view=self.engine.public_view(state),
+                    public_view=public_view,
                     previous_inputs=[*inputs, *sorted(self.shared_inputs)],
                     previous_output=previous_output,
                 )
@@ -618,6 +895,8 @@ class TestAgentRunner:
             inputs.append(proposed.text)
             self.shared_inputs.add(proposed.text)
             location_before = state.entities[state.player.entity_id].location
+            inventory_before = list(state.player.inventory)
+            event_count_before = len(state.event_log)
             version_before = state.version
             started = time.perf_counter()
             try:
@@ -649,6 +928,9 @@ class TestAgentRunner:
                 continue
             latency_ms = round((time.perf_counter() - started) * 1000)
             location_after = next_state.entities[next_state.player.entity_id].location
+            inventory_after = list(next_state.player.inventory)
+            new_events = next_state.event_log[event_count_before:]
+            event_types = [event.type for event in new_events]
             narrative = self._narrative(next_state)
 
             if not resolution.accepted:
@@ -687,6 +969,76 @@ class TestAgentRunner:
                     proposed=proposed,
                     version=version_before,
                 )
+            if resolution.accepted and not resolution.interrupted and not narrative:
+                self._issue(
+                    run,
+                    code="accepted_turn_without_narrative",
+                    message="accepted turn produced no player-visible narrative",
+                    turn=turn,
+                    proposed=proposed,
+                    version=version_before,
+                )
+            if (
+                "inventory_gain" in proposed.invariants
+                and not resolution.interrupted
+                and len(inventory_after) <= len(inventory_before)
+            ):
+                self._issue(
+                    run,
+                    code="inventory_gain_missing",
+                    message="visible acquisition did not add an inventory item",
+                    turn=turn,
+                    proposed=proposed,
+                    version=version_before,
+                )
+            if (
+                "inventory_loss" in proposed.invariants
+                and not resolution.interrupted
+                and len(inventory_after) >= len(inventory_before)
+            ):
+                self._issue(
+                    run,
+                    code="inventory_loss_missing",
+                    message="visible relinquishment did not remove an inventory item",
+                    turn=turn,
+                    proposed=proposed,
+                    version=version_before,
+                )
+            if "inventory_unchanged" in proposed.invariants and inventory_after != inventory_before:
+                self._issue(
+                    run,
+                    code="inventory_changed_without_transfer",
+                    message="inspection or confirmation unexpectedly changed inventory",
+                    turn=turn,
+                    proposed=proposed,
+                    version=version_before,
+                )
+            if (
+                "inventory_gain" in proposed.invariants
+                and not resolution.interrupted
+                and "item_acquired" not in event_types
+            ):
+                self._issue(
+                    run,
+                    code="inventory_gain_event_missing",
+                    message="inventory gain has no auditable item_acquired event",
+                    turn=turn,
+                    proposed=proposed,
+                    version=version_before,
+                )
+            if (
+                "inventory_loss" in proposed.invariants
+                and not resolution.interrupted
+                and "item_removed" not in event_types
+            ):
+                self._issue(
+                    run,
+                    code="inventory_loss_event_missing",
+                    message="inventory loss has no auditable item_removed event",
+                    turn=turn,
+                    proposed=proposed,
+                    version=version_before,
+                )
             if (
                 "location_answered" in proposed.invariants
                 and not resolution.interrupted
@@ -716,11 +1068,72 @@ class TestAgentRunner:
                         proposed=proposed,
                         version=version_before,
                     )
+            if (
+                previous_output
+                and narrative
+                and self._normalized(narrative) == self._normalized(previous_output)
+                and self._utterance_core(proposed.text)
+                != self._utterance_core(previous_input)
+                and not (
+                    proposed.probe == previous_probe == "followup"
+                    and re.search(r"亲眼(?:看见|见到)|听别人说", proposed.text)
+                    and re.search(r"亲眼(?:看见|见到)|听别人说", previous_input)
+                )
+                and (
+                    proposed.probe != previous_probe
+                    or proposed.probe not in {"location", "negotiation"}
+                )
+            ):
+                self._issue(
+                    run,
+                    code="exact_duplicate_performance",
+                    message="two consecutive turns produced identical visible narrative",
+                    turn=turn,
+                    proposed=proposed,
+                    version=version_before,
+                )
+            if "speaker_roles_preserved" in proposed.invariants:
+                present_npcs = [
+                    str(item.get("name", ""))
+                    for item in public_view.get("scene", {}).get("present_npcs", [])
+                    if item.get("name")
+                ]
+                if self._speaker_role_reversed(proposed.text, narrative, present_npcs):
+                    self._issue(
+                        run,
+                        code="speaker_role_reversal",
+                        message="player-authored speech was attributed to an NPC",
+                        turn=turn,
+                        proposed=proposed,
+                        version=version_before,
+                    )
+            intervention = resolution.director_intervention
+            if intervention and intervention.world_justification:
+                internal = self._normalized(intervention.world_justification)
+                visible = self._normalized(narrative)
+                if len(internal) >= 8 and internal in visible:
+                    self._issue(
+                        run,
+                        code="director_internal_text_leaked",
+                        message="internal director world justification became player-visible",
+                        turn=turn,
+                        proposed=proposed,
+                        version=version_before,
+                    )
             if next_state.narrative_sequence and next_state.narrative_sequence.player_text != proposed.text:
                 self._issue(
                     run,
                     code="player_text_not_preserved",
                     message="narrative sequence did not preserve the verbatim player utterance",
+                    turn=turn,
+                    proposed=proposed,
+                    version=version_before,
+                )
+            for code, message in self._world_state_errors(next_state):
+                self._issue(
+                    run,
+                    code=code,
+                    message=message,
                     turn=turn,
                     proposed=proposed,
                     version=version_before,
@@ -734,6 +1147,9 @@ class TestAgentRunner:
                     invariants=proposed.invariants,
                     location_before=location_before,
                     location_after=location_after,
+                    inventory_before=inventory_before,
+                    inventory_after=inventory_after,
+                    event_types=event_types,
                     version_before=version_before,
                     version_after=next_state.version,
                     accepted=resolution.accepted,
@@ -743,6 +1159,8 @@ class TestAgentRunner:
             )
             state = next_state
             previous_output = narrative
+            previous_probe = proposed.probe
+            previous_input = proposed.text
         run.final_status = state.status.value
         return run
 

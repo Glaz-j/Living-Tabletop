@@ -168,6 +168,55 @@ class SoftFactProposal(RuntimeModel):
         return value
 
 
+class ItemChangeProposal(RuntimeModel):
+    """A visible, low-authority item transfer proposed by the foreground model.
+
+    The model describes the intended change but never chooses entity ids for new
+    objects and never emits kernel effects.  A server-side validator resolves or
+    creates the item and materializes the authoritative effects.
+    """
+
+    operation: Literal["acquire", "relinquish"]
+    item_entity_id: str | None = Field(default=None, max_length=120)
+    item_name: str = Field(min_length=1, max_length=120)
+    item_kind: Literal[
+        "weapon",
+        "document",
+        "key",
+        "tool",
+        "consumable",
+        "evidence",
+        "personal",
+        "misc",
+    ] = "misc"
+    counterparty_entity_id: str | None = Field(default=None, max_length=120)
+    origin: Literal[
+        "gift",
+        "pickup",
+        "purchase",
+        "craft",
+        "return",
+        "discard",
+        "consume",
+        "other",
+    ] = "other"
+    description: str = Field(default="", max_length=500)
+    reason: str = Field(min_length=1, max_length=300)
+
+    @field_validator("item_name", "description", "reason")
+    @classmethod
+    def strip_item_text(cls, value: str) -> str:
+        return value.strip()
+
+    @model_validator(mode="after")
+    def validate_operation_shape(self) -> "ItemChangeProposal":
+        if self.operation == "relinquish" and self.item_entity_id is None:
+            raise ValueError("relinquishing an item requires an existing item_entity_id")
+        if self.origin == "gift" and self.counterparty_entity_id is None:
+            raise ValueError("a gift requires a counterparty_entity_id")
+        return self
+
+
 class DialogueTurnOutput(RuntimeModel):
     """Complete player-facing dialogue plus auditable soft-canon proposals."""
 
@@ -227,6 +276,7 @@ class TurnCompositionOutput(RuntimeModel):
     failure_performance: list[str] = Field(default_factory=list, max_length=4)
     used_fact_ids: list[str] = Field(default_factory=list, max_length=12)
     proposed_facts: list[SoftFactProposal] = Field(default_factory=list, max_length=6)
+    proposed_item_changes: list[ItemChangeProposal] = Field(default_factory=list, max_length=4)
     answered_query_parts: list[str] = Field(default_factory=list, max_length=8)
     unresolved_query_parts: list[str] = Field(default_factory=list, max_length=8)
 

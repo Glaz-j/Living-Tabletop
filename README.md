@@ -53,9 +53,11 @@ python scripts/self_play.py --scenario all
 python scripts/rules_playtest.py
 python scripts/benchmark_retrieval.py --iterations 250
 python scripts/test_agent.py --scenario all --runs-per-persona 2 --turns 24 --output-dir artifacts/test-agents
+# 1024 局、每局 32 回合；逐局检查点、默认可断点续跑
+python scripts/test_agent.py --scenario all --total-runs 1024 --turns 32 --output-dir .artifacts/test-agents/nightly-1024
 ```
 
-`playthrough.py` 保留一条《圣玛丽医院》的固定通关路线。`self_play.py` 覆盖作者动作和结局路线；`rules_playtest.py` 覆盖接受失败、幸运改写、孤注一掷、SAN、对抗战和重伤。`test_agent.py` 则用 8 种人格依据当前公开场景动态生成互不重复的自由文本，不点击默认按钮；快速合约模式适合数百轮不变量 fuzzing，`--game-backend live` 可改用正式本地/API 模型。脚本返回非零退出码表示发现错误，详细说明见 [docs/TEST_AGENT.md](docs/TEST_AGENT.md)。
+`playthrough.py` 保留一条《圣玛丽医院》的固定通关路线。`self_play.py` 覆盖作者动作和结局路线；`rules_playtest.py` 覆盖接受失败、幸运改写、孤注一掷、SAN、对抗战和重伤。`test_agent.py` 则用 8 种人格依据当前公开场景生成自由文本，不点击默认按钮；快速合约模式适合数万回合的不变量 fuzzing，`--game-backend live` 可改用正式本地/API 模型。`--total-runs` 会在剧本与人格间均衡分配精确局数；每局立即写入独立 JSON，汇总、失败语料和 manifest 可用同一命令断点续跑。脚本返回非零退出码表示发现错误，详细说明见 [docs/TEST_AGENT.md](docs/TEST_AGENT.md)。
 
 若要保留 JSON 与 Markdown 报告：
 

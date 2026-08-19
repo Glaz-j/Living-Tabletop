@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import timedelta
 from typing import Any, Iterable
 
@@ -373,19 +374,35 @@ class WorldKernel:
 
         if op == "add_inventory":
             item_id = str(params["item_id"])
-            if item_id not in state.entities:
+            item = state.entities.get(item_id)
+            if item is None:
                 raise KernelValidationError(f"Unknown inventory item: {item_id}")
+            if item.type != EntityType.ITEM:
+                raise KernelValidationError(f"Entity is not an inventory item: {item_id}")
             if item_id not in state.player.inventory:
                 state.player.inventory.append(item_id)
-                state.entities[item_id].location = state.player.entity_id
+                item.location = state.player.entity_id
                 self.append_event(state, "item_acquired", target=item_id, payload={"source": source}, visible=True)
             return
 
         if op == "remove_inventory":
             item_id = str(params["item_id"])
             if item_id in state.player.inventory:
+                destination = params.get("destination")
+                if destination is not None and str(destination) not in state.entities:
+                    raise KernelValidationError(
+                        f"Unknown inventory transfer destination: {destination}"
+                    )
                 state.player.inventory.remove(item_id)
-                self.append_event(state, "item_removed", target=item_id, payload={"source": source}, visible=True)
+                if destination is not None:
+                    state.entities[item_id].location = str(destination)
+                self.append_event(
+                    state,
+                    "item_removed",
+                    target=item_id,
+                    payload={"source": source, "destination": destination},
+                    visible=True,
+                )
             return
 
         if op == "add_npc_knowledge":
@@ -485,6 +502,13 @@ class WorldKernel:
         raise KernelValidationError(f"Unsupported effect: {op}")
 
     def apply_effects(self, state: WorldState, effects: Iterable[Effect], *, source: str) -> None:
+        # Validate the complete sequence against an isolated copy first.  This
+        # makes compound changes such as create-item -> acquire-item -> record-fact
+        # atomic: a later invalid effect cannot leave an orphaned entity behind.
+        effects = list(effects)
+        preview = deepcopy(state)
+        for effect in effects:
+            self.apply_effect(preview, effect, source=source)
         for effect in effects:
             self.apply_effect(state, effect, source=source)
 
