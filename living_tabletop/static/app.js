@@ -15,11 +15,9 @@ const state = {
     status: "ready",
     skipped: false,
     interrupted: false,
-    decisionUnlocked: false,
     renderedBeatId: null,
     pollToken: 0,
     pollTimer: null,
-    endWaitTimer: null,
   },
 };
 
@@ -341,8 +339,6 @@ function stopNarrativePolling() {
   state.narrative.pollToken += 1;
   if (state.narrative.pollTimer) window.clearTimeout(state.narrative.pollTimer);
   state.narrative.pollTimer = null;
-  if (state.narrative.endWaitTimer) window.clearTimeout(state.narrative.endWaitTimer);
-  state.narrative.endWaitTimer = null;
 }
 
 function readNarrativeProgress(sequence) {
@@ -365,34 +361,15 @@ function saveNarrativeProgress() {
       cursor: playback.cursor,
       skipped: playback.skipped,
       interrupted: playback.interrupted,
-      decisionUnlocked: playback.decisionUnlocked,
     }));
   } catch (_error) {
     // Storage may be unavailable in privacy-restricted browser contexts.
   }
 }
 
-function scheduleNarrativeEndUnlock() {
-  const playback = state.narrative;
-  const waitingAtEnd = playback.status === "pending"
-    && playback.cursor >= playback.beats.length - 1
-    && !playback.skipped
-    && !playback.interrupted
-    && !playback.decisionUnlocked;
-  if (!waitingAtEnd || playback.endWaitTimer) return;
-  playback.endWaitTimer = window.setTimeout(() => {
-    playback.endWaitTimer = null;
-    if (playback.status !== "pending" || playback.cursor < playback.beats.length - 1) return;
-    playback.decisionUnlocked = true;
-    stopNarrativePolling();
-    paintNarrativeBeat();
-  }, 1200);
-}
-
 function performanceActive() {
   const playback = state.narrative;
   if (playback.skipped || playback.interrupted) return false;
-  if (playback.decisionUnlocked) return false;
   return playback.status === "pending" || playback.cursor < playback.beats.length - 1;
 }
 
@@ -516,17 +493,12 @@ function paintNarrativeBeat() {
   }
   const hasNext = playback.cursor < playback.beats.length - 1;
   const pendingAtEnd = playback.status === "pending" && !hasNext;
-  if (pendingAtEnd) scheduleNarrativeEndUnlock();
-  else if (playback.endWaitTimer) {
-    window.clearTimeout(playback.endWaitTimer);
-    playback.endWaitTimer = null;
-  }
   const showControls = performanceActive();
   elements.narrativeControls.classList.toggle("hidden", !showControls);
   elements.narrativeProgress.textContent = playback.beats.length
     ? `${Math.min(playback.cursor + 1, playback.beats.length)} / ${playback.beats.length}`
     : "";
-  elements.narrativePending.classList.toggle("hidden", playback.status !== "pending" || playback.decisionUnlocked);
+  elements.narrativePending.classList.toggle("hidden", playback.status !== "pending");
   elements.narrativeContinue.disabled = state.busy || !hasNext;
   elements.narrativeContinue.textContent = pendingAtEnd ? "生成中…" : hasNext ? "继续" : "已读完";
   syncDecisionVisibility();
@@ -534,7 +506,7 @@ function paintNarrativeBeat() {
 }
 
 function scheduleNarrativePoll(token, attempt = 0) {
-  if (!state.sessionId || state.narrative.status !== "pending" || state.narrative.skipped || state.narrative.interrupted || state.narrative.decisionUnlocked) return;
+  if (!state.sessionId || state.narrative.status !== "pending" || state.narrative.skipped || state.narrative.interrupted) return;
   state.narrative.pollTimer = window.setTimeout(async () => {
     if (token !== state.narrative.pollToken) return;
     try {
@@ -577,7 +549,7 @@ function installNarrativeSequence(sequence, fallbackText = "") {
       Math.max(0, state.narrative.beats.length - 1),
     );
     paintNarrativeBeat();
-    if (state.narrative.status === "pending" && !state.narrative.decisionUnlocked) {
+    if (state.narrative.status === "pending") {
       const token = state.narrative.pollToken;
       scheduleNarrativePoll(token);
     }
@@ -594,7 +566,6 @@ function installNarrativeSequence(sequence, fallbackText = "") {
   state.narrative.status = safeSequence.status || "ready";
   state.narrative.skipped = Boolean(savedProgress?.skipped);
   state.narrative.interrupted = Boolean(savedProgress?.interrupted);
-  state.narrative.decisionUnlocked = Boolean(savedProgress?.decisionUnlocked);
   state.narrative.renderedBeatId = null;
   paintNarrativeBeat();
   if (state.narrative.status === "pending") {

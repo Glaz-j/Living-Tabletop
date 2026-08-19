@@ -54,6 +54,21 @@ class Narrator:
         self.scenario = scenario
         self.grounding_validator = GroundingValidator(scenario)
 
+    @staticmethod
+    def _light_dialogue_fallback(outcome: OutcomeEnvelope) -> str:
+        npc = next(
+            (
+                str(entity.get("name"))
+                for entity in outcome.present_entities
+                if entity.get("type") == "NPC" and entity.get("name")
+            ),
+            "对方",
+        )
+        topic = f"{outcome.action_label}\n{outcome.player_text or ''}"
+        if any(token in topic for token in ("天气", "气候", "下雨", "雨天", "晴天", "冷", "热", "刮风")):
+            return f"“是啊，天气总会悄悄影响人的心情。”{npc}顺着这个话题回应了一句。"
+        return f"“嗯，我明白你的意思。”{npc}顺着当前的话题回应了一句。"
+
     def narrate(
         self,
         state: WorldState,
@@ -279,6 +294,25 @@ class Narrator:
                 outcome_envelope,
                 beats,
             )
+            if light_dialogue and len(beats) < 2:
+                fallback = self._light_dialogue_fallback(outcome_envelope)
+                fallback_beats, _fallback_grounding = self.grounding_validator.validate(
+                    state,
+                    outcome_envelope,
+                    [fallback],
+                )
+                if fallback_beats and not substantially_repeats(
+                    fallback,
+                    [*earlier_texts, *beats],
+                ):
+                    # A rejected first beat often contained the actual NPC reply while a
+                    # surviving second beat only contained its aftermath. Put the safe
+                    # reply back before that aftermath so the exchange remains coherent.
+                    beats = (
+                        [fallback, *beats]
+                        if grounding.rejected_beats
+                        else [*beats, fallback]
+                    )[:limit]
             sequence.grounding_report = grounding.model_dump(mode="json")
             record_agent_call(
                 state,
@@ -289,4 +323,8 @@ class Narrator:
             return beats
         except Exception:
             record_agent_call(state, role="narrator", result=None, validation="fallback", error=True)
-            return []
+            return (
+                [self._light_dialogue_fallback(outcome_envelope)]
+                if light_dialogue
+                else []
+            )

@@ -616,6 +616,43 @@ def test_narrator_keeps_automatic_smalltalk_brief_and_self_contained(scenario, s
     assert "轻量对话" in fake.calls[-1]["system"]
 
 
+def test_narrator_restores_safe_smalltalk_reply_when_primary_beat_is_rejected(scenario, state):
+    sequence = NarrativeSequence(
+        id="narrative_weather_repair",
+        state_version=state.version,
+        action_label="谈论天气",
+        action_type="TALK",
+        player_text="和她讨论今天天气",
+        mechanical_result={"outcome": "AUTOMATIC"},
+        canonical_seed="你把这句话直接说给安娜听。",
+        beats=[
+            NarrativeBeat(
+                id="weather_seed",
+                text="你把这句话直接说给安娜听。",
+                source="keeper",
+            )
+        ],
+        created_at=state.world_time,
+    )
+    fake = FakeLLM(
+        {
+            "beats": [
+                "“是啊，不过我们还是谈谈这桩委托吧。”安娜回答。",
+                "你点点头，杯中的涟漪慢慢平复。",
+            ]
+        }
+    )
+
+    beats = Narrator(fake, scenario).expand_sequence(state, sequence)
+
+    assert len(beats) == 2
+    assert beats[0].startswith("“是啊，天气总会悄悄影响人的心情。”")
+    assert beats[1] == "你点点头，杯中的涟漪慢慢平复。"
+    assert all("委托" not in beat for beat in beats)
+    assert sequence.grounding_report is not None
+    assert sequence.grounding_report["accepted"] is False
+
+
 def test_compatible_gateway_retries_without_response_format():
     class UnsupportedFormat(Exception):
         status_code = 400

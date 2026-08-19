@@ -56,7 +56,8 @@ def test_frontend_includes_inline_network_failure_feedback(tmp_path):
     assert "scheduleNarrativePoll" in script.text
     assert "renderedBeatId !== beat.id" in script.text
     assert "performanceActive" in script.text
-    assert "decisionUnlocked" in script.text
+    assert "scheduleNarrativeEndUnlock" not in script.text
+    assert "decisionUnlocked" not in script.text
     assert "const sameSequence" in script.text
     assert "function renderScene(visual)" in script.text
     assert "data-scene-action-id" in script.text
@@ -64,7 +65,7 @@ def test_frontend_includes_inline_network_failure_feedback(tmp_path):
     assert "readNarrativeProgress" in script.text
     assert "saveNarrativeProgress" in script.text
     assert "sessionStorage" in script.text
-    assert "}, 1200);" in script.text
+    assert 'playback.status !== "pending"' in script.text
     assert "你要如何打断当前演出" in script.text
     assert "aria-live=\"polite\"" in page.text
     assert ".clarification.request-error" in styles.text
