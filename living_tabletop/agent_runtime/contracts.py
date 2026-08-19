@@ -192,6 +192,15 @@ class DialogueTurnOutput(RuntimeModel):
                 item = item.replace('"', "“", 1)
                 if '"' in item:
                     item = item.replace('"', "”", 1)
+            # A local model occasionally ends a complete final sentence with one
+            # unmatched direct-speech opener. Closing that single trailing quote
+            # is a lossless typography repair; larger imbalances remain invalid.
+            for opener, closer in (("“", "”"), ("‘", "’")):
+                imbalance = item.count(opener) - item.count(closer)
+                if imbalance == 1:
+                    item = f"{item}{closer}"
+                elif imbalance != 0:
+                    raise ValueError("dialogue beat contains unbalanced quotation marks")
             beats.append(item)
         if not beats:
             raise ValueError("dialogue beats cannot be blank")

@@ -1601,6 +1601,10 @@ class GameEngine:
 
         state.version += 1
         resolution.state_version = state.version
+        succeeded = resolution.check.succeeded if resolution.check else resolution.accepted
+        selected_performance_beats = (
+            action.success_beats if succeeded else action.failure_beats
+        )
         state.narrative_sequence = self._build_narrative_sequence(
             state,
             action,
@@ -1609,7 +1613,7 @@ class GameEngine:
             allow_generation=not (
                 action.id.startswith("open__")
                 and action.dialogue_complete
-                and bool(action.success_beats)
+                and bool(selected_performance_beats)
             ),
         )
         remember_visible_beats(state, state.narrative_sequence)

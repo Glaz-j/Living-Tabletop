@@ -5,7 +5,7 @@ import logging
 import re
 from typing import Iterable
 
-from ..context import context_relevance_score
+from ..context import context_relevance_score, substantially_repeats
 from ..harness import HarnessValidationError, StructuredHarness
 from ..llm import LLMUnavailable, OpenAICompatibleLLM, record_agent_call
 from ..models import ActionType, EntityType, Fact, OpenActionPlan, WorldState
@@ -217,6 +217,31 @@ class DialogueAgent:
         self.fact_validator = SoftFactValidator()
 
     @staticmethod
+    def _substantially_replays_turn(
+        beats: Iterable[str],
+        previous_beats: Iterable[str],
+    ) -> bool:
+        current = SoftFactValidator._normalized("".join(beats))
+        previous = SoftFactValidator._normalized("".join(previous_beats))
+        if min(len(current), len(previous)) < 24:
+            return False
+        width = 3
+        current_grams = {
+            current[index : index + width]
+            for index in range(len(current) - width + 1)
+        }
+        previous_grams = {
+            previous[index : index + width]
+            for index in range(len(previous) - width + 1)
+        }
+        if not current_grams or not previous_grams:
+            return False
+        shared = len(current_grams & previous_grams)
+        # Compare against the shorter turn so splitting, merging, or padding an
+        # old reply with stage directions cannot disguise a replay.
+        return shared / min(len(current_grams), len(previous_grams)) >= 0.72
+
+    @staticmethod
     def _safe_world_entities(
         state: WorldState,
         context: AssembledTurnContext,
@@ -299,7 +324,14 @@ class DialogueAgent:
             speaker_id,
             referenced_entity_ids,
         )
-        allowed_entity_ids = {str(item["id"]) for item in safe_entities}
+        # The player is intentionally omitted from generatable_world_entities so
+        # the model cannot propose facts about them, but an NPC must always be
+        # allowed to address the current player by name in ordinary dialogue.
+        allowed_entity_ids = {
+            envelope.actor_id,
+            speaker_id,
+            *(str(item["id"]) for item in safe_entities),
+        }
         allowed_evidence = list(disclosure.approved_evidence) if disclosure else []
         allowed_fact_ids = {item.fact_id for item in allowed_evidence}
         speaker_knowledge = {
@@ -391,6 +423,41 @@ class DialogueAgent:
                 ),
             },
         }
+        recent_npc_entries = [
+            item
+            for item in context.recent_visible_history
+            if item.get("speaker_id") == speaker_id and str(item.get("text", "")).strip()
+        ]
+        latest_npc_version = max(
+            (int(item.get("state_version", -1)) for item in recent_npc_entries),
+            default=-1,
+        )
+        recent_npc_beats = [
+            str(item["text"]).strip()
+            for item in recent_npc_entries
+            if int(item.get("state_version", -1)) == latest_npc_version
+        ]
+
+        def validate_dialogue(value: DialogueTurnOutput) -> None:
+            self.fact_validator.validate(
+                state,
+                value,
+                speaker_id=speaker_id,
+                allowed_entity_ids=allowed_entity_ids,
+                allowed_fact_ids=allowed_fact_ids,
+            )
+            if recent_npc_beats and (
+                all(
+                    substantially_repeats(beat, recent_npc_beats)
+                    for beat in value.beats
+                )
+                or self._substantially_replays_turn(value.beats, recent_npc_beats)
+            ):
+                raise DialogueValidationError(
+                    "dialogue only repeats the NPC's already performed lines; "
+                    "continue from the latest player utterance instead"
+                )
+
         system = (
             "你是 Living Tabletop 的 Dialogue Turn Agent，是当前对话内容的主要作者。"
             "current_turn.utterance_verbatim 是玩家已经亲口说出的原文，拥有最高语义优先级；"
@@ -411,6 +478,10 @@ class DialogueAgent:
             "NPC 的关键回复必须放在引号内直接说出，并用第一人称说话，不能用自己的姓名称呼自己；可以加入简短动作和环境描写。"
             "recent_conversation_verbatim 是按 player、npc 或 narration 标明角色的原始演出记录；"
             "它只用于承接人物关系、指代和未结束的话题，不要复述与当前发言无关的旧台词、旧建议、主线提示或神秘预兆。"
+            "这些记录都已经向玩家演出；新回复必须从最新的玩家发言之后继续，"
+            "不得把 NPC 上一轮台词原样重放或近义改写成新回复。"
+            "NPC 在紧邻上文中已经说过的数字、报价、条件和态度是本轮的连续性约束；"
+            "必须正面承接，不得无说明地改回更早的说法。若人物改变主意，必须在台词中给出自然的转折。"
             "relevant_world_memory 是供参考的世界记忆，不是必须逐条写进回复的白名单；当前回应自然完整比罗列资料更重要。"
             "普通闲聊、态度表达和一次性的谈判措辞允许自由、自然地发挥，不需要把纯气氛写入 proposed_facts；"
             "只有完成当前回应确实需要、且预计后续会再次引用的新客观细节才提出 proposed_facts。"
@@ -424,13 +495,7 @@ class DialogueAgent:
                 user_payload=payload,
                 max_output_tokens=1100,
                 temperature=0.45,
-                post_validate=lambda value: self.fact_validator.validate(
-                    state,
-                    value,
-                    speaker_id=speaker_id,
-                    allowed_entity_ids=allowed_entity_ids,
-                    allowed_fact_ids=allowed_fact_ids,
-                ),
+                post_validate=validate_dialogue,
             )
             record_agent_call(
                 state,

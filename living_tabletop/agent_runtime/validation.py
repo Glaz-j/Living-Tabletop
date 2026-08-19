@@ -90,6 +90,19 @@ class PlanValidator:
             if plan.resolution == "check":
                 plan.resolution = "automatic"
 
+        # Speaking is not itself a failable world mutation. For ordinary open
+        # conversation, the Dialogue Agent authors the NPC's agreement, refusal,
+        # counter-offer, or hesitation directly. Knowledge disclosure may still
+        # add a check later, and deception/threats retain their mechanical checks.
+        if (
+            plan.action_type == ActionType.TALK
+            and plan.knowledge_query is None
+            and plan.speech_act in {"question", "statement", "request", "smalltalk"}
+        ):
+            plan.resolution = "automatic"
+            plan.skill = None
+            plan.difficulty = "regular"
+
         player_location = state.entities[state.player.entity_id].location
         present_ids = {
             entity.id

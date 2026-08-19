@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from living_tabletop.agent_runtime import (
     ContextAssembler,
+    DialogueAgent,
     DisclosurePolicy,
     DialogueTurnOutput,
     GroundingValidator,
@@ -94,6 +95,28 @@ class DialogueRoutingLLM:
             else self.planner_output
         )
         return LLMResult(data=deepcopy(output), latency_ms=3, input_tokens=20, output_tokens=20)
+
+
+class RepairingDialogueRoutingLLM(DialogueRoutingLLM):
+    def __init__(self, planner_output: dict, dialogue_outputs: list[dict]):
+        super().__init__(planner_output, dialogue_outputs[-1])
+        self.dialogue_outputs = dialogue_outputs
+        self.dialogue_attempt = 0
+
+    def complete_json(self, **kwargs):
+        if kwargs.get("schema_name") != "DialogueTurnOutput":
+            return super().complete_json(**kwargs)
+        self.calls.append(kwargs)
+        output = self.dialogue_outputs[
+            min(self.dialogue_attempt, len(self.dialogue_outputs) - 1)
+        ]
+        self.dialogue_attempt += 1
+        return LLMResult(
+            data=deepcopy(output),
+            latency_ms=3,
+            input_tokens=20,
+            output_tokens=20,
+        )
 
 
 class FailingDialogueLLM(DialogueRoutingLLM):
@@ -574,6 +597,7 @@ def test_unknown_npc_answer_does_not_fabricate_or_reveal_a_fact():
 
 def test_dialogue_context_preserves_player_role_and_raw_negotiation_transcript():
     scenario, state = _haunting_state()
+    state.entities["player"].name = "林默"
     offline = OpenAICompatibleLLM(LLMSettings(enabled=False, api_key=None))
     state, introduced = GameEngine(scenario, offline).play(
         state,
@@ -601,7 +625,7 @@ def test_dialogue_context_preserves_player_role_and_raw_negotiation_transcript()
         },
     }
     dialogue_output = {
-        "beats": ["诺特沉默片刻。‘我明白你的顾虑。报酬的事，我们可以再谈。’"],
+        "beats": ["诺特沉默片刻。‘林默，我明白你的顾虑。报酬的事，我们可以再谈。’"],
         "used_fact_ids": [],
         "proposed_facts": [],
         "answered_query_parts": [],
@@ -668,6 +692,214 @@ def test_dialogue_context_preserves_player_role_and_raw_negotiation_transcript()
     assert transcript[text]["speaker_id"] == "player"
     assert transcript[dialogue_output["beats"][0]]["role"] == "npc"
     assert transcript[dialogue_output["beats"][0]]["speaker_id"] == "npc_knott"
+
+
+def test_dialogue_repairs_a_response_that_only_replays_the_previous_npc_turn():
+    scenario, state = _haunting_state()
+    opening_text = "说实话，钱有点少了，得加钱。"
+    opening_plan = {
+        "existing_action_id": None,
+        "confidence": 0.99,
+        "open_plan": {
+            "label": "玩家向诺特要求提高报酬",
+            "action_type": "TALK",
+            "goal": opening_text,
+            "target_name": "史蒂文·诺特",
+            "target_entity_id": "npc_knott",
+            "addressee_id": "npc_knott",
+            "duration_minutes": 0,
+            "resolution": "automatic",
+            "risk": "safe",
+            "speech_act": "request",
+            "referents": [],
+            "knowledge_query": None,
+        },
+    }
+    opening_beat = "诺特皱起眉头。‘二十美元已经是我眼下能拿出的全部了。’"
+    opening_output = {
+        "beats": [opening_beat],
+        "used_fact_ids": [],
+        "proposed_facts": [],
+        "answered_query_parts": [],
+        "unresolved_query_parts": [],
+    }
+    state, introduced = GameEngine(
+        scenario,
+        DialogueRoutingLLM(opening_plan, opening_output),
+    ).play(state, text=opening_text)
+    assert introduced.accepted is True
+    previous_npc_beat = next(
+        item.text
+        for item in state.visible_history
+        if item.speaker_id == "npc_knott" and item.text == opening_beat
+    )
+
+    text = "那加一点？"
+    planner_output = {
+        "existing_action_id": None,
+        "confidence": 0.99,
+        "open_plan": {
+            "label": "玩家继续向诺特商量增加报酬",
+            "action_type": "TALK",
+            "goal": text,
+            "target_name": "史蒂文·诺特",
+            "target_entity_id": "npc_knott",
+            "addressee_id": "npc_knott",
+            "duration_minutes": 0,
+            "resolution": "automatic",
+            "risk": "safe",
+            "speech_act": "request",
+            "referents": [],
+            "knowledge_query": None,
+        },
+    }
+    repeated_output = {
+        "beats": [previous_npc_beat],
+        "used_fact_ids": [],
+        "proposed_facts": [],
+        "answered_query_parts": [],
+        "unresolved_query_parts": [],
+    }
+    repaired_beat = "诺特摇了摇头。‘我最多只能再加五美元，这是最后的余地。’"
+    repaired_output = {**repeated_output, "beats": [repaired_beat]}
+    llm = RepairingDialogueRoutingLLM(
+        planner_output,
+        [repeated_output, repaired_output],
+    )
+
+    resolved, resolution = GameEngine(scenario, llm).play(state, text=text)
+
+    dialogue_calls = [
+        call for call in llm.calls if call.get("schema_name") == "DialogueTurnOutput"
+    ]
+    assert resolution.accepted is True
+    assert resolution.narrative_seed == repaired_beat
+    assert len(dialogue_calls) == 2
+    assert dialogue_calls[1]["user_payload"]["_harness_repair"]["validation_errors"].startswith(
+        "dialogue only repeats"
+    )
+    assert any(item.text == repaired_beat for item in resolved.visible_history)
+
+
+def test_dialogue_detects_a_previous_turn_replayed_with_extra_stage_directions():
+    previous = [
+        "诺特紧张地摩挲着衣角。",
+        "‘二十块已经是我能拿出的全部了。’",
+        "‘求你了，就按这个数吧。’",
+    ]
+    replayed = [
+        "诺特紧张地摩挲着衣角，指节因用力而发白。",
+        "‘二十块已经是我能拿出的全部了。’他的声音微微发颤。",
+        "‘求你了，就按这个数吧。’他把钥匙推回桌面中央。",
+    ]
+
+    assert DialogueAgent._substantially_replays_turn(replayed, previous) is True
+    assert DialogueAgent._substantially_replays_turn(
+        ["‘我再加五块，但这是最后的条件。’"],
+        previous,
+    ) is False
+
+
+def test_dialogue_output_closes_one_trailing_direct_speech_quote():
+    output = DialogueTurnOutput.model_validate(
+        {
+            "beats": ["‘二十五块是极限。别让我为难……"],
+            "used_fact_ids": [],
+            "proposed_facts": [],
+            "answered_query_parts": [],
+            "unresolved_query_parts": [],
+        }
+    )
+
+    assert output.beats == ["‘二十五块是极限。别让我为难……’"]
+
+
+def test_ordinary_open_dialogue_request_is_not_double_resolved_by_a_skill_check():
+    scenario, state = _haunting_state()
+    state.player.skills["charm"] = 0
+    text = "那加一点？"
+    planner_output = {
+        "existing_action_id": None,
+        "confidence": 0.99,
+        "open_plan": {
+            "label": "玩家向诺特要求增加报酬",
+            "action_type": "TALK",
+            "goal": text,
+            "target_name": "史蒂文·诺特",
+            "target_entity_id": "npc_knott",
+            "addressee_id": "npc_knott",
+            "duration_minutes": 0,
+            "resolution": "check",
+            "skill": "charm",
+            "difficulty": "hard",
+            "risk": "safe",
+            "speech_act": "request",
+            "referents": [],
+            "knowledge_query": None,
+        },
+    }
+    dialogue_output = {
+        "beats": ["诺特斟酌着回答：‘如果条件允许，我会认真考虑。’"],
+        "used_fact_ids": [],
+        "proposed_facts": [],
+        "answered_query_parts": [],
+        "unresolved_query_parts": [],
+    }
+
+    resolved, resolution = GameEngine(
+        scenario,
+        DialogueRoutingLLM(planner_output, dialogue_output),
+    ).play(state, text=text)
+
+    assert resolution.check is not None
+    assert resolution.check.outcome == CheckOutcome.AUTOMATIC
+    assert resolved.narrative_sequence is not None
+    assert resolved.narrative_sequence.status == "ready"
+    assert resolved.narrative_sequence.beats[0].text == dialogue_output["beats"][0]
+
+
+def test_failed_open_deception_check_keeps_async_failure_performance_enabled():
+    scenario, state = _haunting_state()
+    state.player.skills["charm"] = 0
+    text = "我说市政厅已经授权我查看所有材料。"
+    planner_output = {
+        "existing_action_id": None,
+        "confidence": 0.99,
+        "open_plan": {
+            "label": "玩家试图欺骗诺特以获取配合",
+            "action_type": "DECEIVE",
+            "goal": text,
+            "target_name": "史蒂文·诺特",
+            "target_entity_id": "npc_knott",
+            "addressee_id": "npc_knott",
+            "duration_minutes": 0,
+            "resolution": "check",
+            "skill": "charm",
+            "difficulty": "hard",
+            "risk": "safe",
+            "speech_act": "deception",
+            "referents": [],
+            "knowledge_query": None,
+        },
+    }
+    dialogue_output = {
+        "beats": ["诺特审视着你。‘把授权书拿给我看。’"],
+        "used_fact_ids": [],
+        "proposed_facts": [],
+        "answered_query_parts": [],
+        "unresolved_query_parts": [],
+    }
+
+    resolved, resolution = GameEngine(
+        scenario,
+        DialogueRoutingLLM(planner_output, dialogue_output),
+    ).play(state, text=text)
+
+    assert resolution.check is not None
+    assert resolution.check.succeeded is False
+    assert resolved.narrative_sequence is not None
+    assert resolved.narrative_sequence.status == "pending"
+    assert resolved.narrative_sequence.beats[0].text == resolution.narrative_seed
 
 
 def test_dialogue_agent_can_create_persist_and_retrieve_missing_soft_location_fact(tmp_path):
