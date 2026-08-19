@@ -100,6 +100,35 @@ class TurnPlanner:
                         ],
                     )
                 decision = TurnPlannerDecision(open_plan=plan, confidence=decision.confidence)
+            elif plan is not None:
+                # A turn may contain a physical action and speech at the same time,
+                # e.g. “I pocket the key and ask whether you have anything else to
+                # tell me.” The primary action type must not erase the addressed
+                # conversational clause.
+                addressee = plan.addressee_id
+                if addressee and self._looks_like_question(envelope.text):
+                    plan.speech_act = "question"
+                    if plan.knowledge_query is None:
+                        question_text = envelope.text
+                        spoken_clause = re.search(
+                            r"(?:说|问)(?:道)?[，,:：\s]*(?P<question>[^。；;]+)$",
+                            envelope.text,
+                        )
+                        if spoken_clause and self._looks_like_question(spoken_clause.group("question")):
+                            question_text = spoken_clause.group("question").strip()
+                        plan.knowledge_query = KnowledgeQuery(
+                            query_text=question_text,
+                            asker_id=envelope.actor_id,
+                            addressee_id=addressee,
+                            subject_entity_ids=[
+                                item.entity_id
+                                for item in plan.referents
+                                if item.entity_id is not None
+                                and item.entity_id != addressee
+                                and item.mention in question_text
+                            ],
+                        )
+                decision = TurnPlannerDecision(open_plan=plan, confidence=decision.confidence)
             record_agent_call(
                 state,
                 role="turn_planner",

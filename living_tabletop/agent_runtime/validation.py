@@ -96,7 +96,7 @@ class PlanValidator:
             for entity in state.entities.values()
             if entity.active and entity.location == player_location
         }
-        if plan.action_type in {ActionType.TALK, ActionType.DECEIVE}:
+        if plan.action_type in {ActionType.TALK, ActionType.DECEIVE} or plan.addressee_id is not None:
             addressee_id = plan.addressee_id or plan.target_entity_id
             if addressee_id is None:
                 present_npcs = [
@@ -123,7 +123,8 @@ class PlanValidator:
                 else:
                     raise PlanValidationError("dialogue addressee is not present")
             plan.addressee_id = addressee_id
-            plan.target_entity_id = addressee_id
+            if plan.action_type in {ActionType.TALK, ActionType.DECEIVE}:
+                plan.target_entity_id = addressee_id
             plan.referents = [
                 referent.model_copy(
                     update={
@@ -215,5 +216,6 @@ class PlanValidator:
             rest_day_offset=plan.rest_day_offset,
             success_text=success,
             failure_text=failure,
+            action_success_text=success,
             speech_act=plan.speech_act,
         )

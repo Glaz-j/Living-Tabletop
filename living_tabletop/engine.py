@@ -293,7 +293,14 @@ class GameEngine:
                     open_plan = self.disclosure_policy.apply(open_plan, disclosure)
                     open_plan.knowledge_query_text = query.query_text
                 dialogue = None
-                if planned.action_type == ActionType.TALK:
+                has_dialogue_clause = bool(
+                    planned.action_type in {ActionType.TALK, ActionType.DECEIVE}
+                    or (
+                        planned.addressee_id
+                        and planned.speech_act != "none"
+                    )
+                )
+                if has_dialogue_clause:
                     dialogue = self.dialogue_agent.compose(
                         working,
                         envelope=envelope,
@@ -659,6 +666,7 @@ class GameEngine:
             failure_text=plan.failure_text,
             success_beats=plan.success_beats,
             failure_beats=plan.failure_beats,
+            dialogue_complete=plan.dialogue_complete,
             suggest=False,
             risk=plan.risk,
             category=category,
@@ -1600,7 +1608,7 @@ class GameEngine:
             location_before=location_before,
             allow_generation=not (
                 action.id.startswith("open__")
-                and action.type == ActionType.TALK
+                and action.dialogue_complete
                 and bool(action.success_beats)
             ),
         )

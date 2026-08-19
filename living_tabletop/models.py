@@ -237,6 +237,7 @@ class ActionDefinition(DomainModel):
     failure_text: str = "这次尝试没有产生预期的结果。"
     success_beats: list[str] = Field(default_factory=list)
     failure_beats: list[str] = Field(default_factory=list)
+    dialogue_complete: bool = False
     interrupted_text: str = "突发事件打断了你的行动。"
     once: bool = False
     complete_on_attempt: bool = False
@@ -645,8 +646,10 @@ class OpenActionPlan(DomainModel):
     rest_day_offset: int = Field(default=0, ge=0, le=7)
     success_text: str = Field(min_length=1, max_length=1200)
     failure_text: str = Field(default="这次尝试没有产生预期的结果。", min_length=1, max_length=1200)
-    success_beats: list[str] = Field(default_factory=list, max_length=4)
+    action_success_text: str | None = Field(default=None, min_length=1, max_length=1200)
+    success_beats: list[str] = Field(default_factory=list, max_length=5)
     failure_beats: list[str] = Field(default_factory=list, max_length=4)
+    dialogue_complete: bool = False
     generated_facts: list[Fact] = Field(default_factory=list, max_length=6)
     speech_act: Literal[
         "none", "question", "statement", "request", "smalltalk", "deception", "threat"

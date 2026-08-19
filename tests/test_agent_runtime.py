@@ -688,7 +688,7 @@ def test_dialogue_agent_can_create_persist_and_retrieve_missing_soft_location_fa
     assert verified, (expected, actual)
 
 
-def test_soft_fact_validator_rejects_conflict_with_established_world_detail():
+def test_soft_fact_validator_rejects_visible_conflict_with_established_world_detail():
     _scenario, state = _haunting_state()
     state.facts["f_existing_address"] = Fact(
         id="f_existing_address",
@@ -719,7 +719,7 @@ def test_soft_fact_validator_rejects_conflict_with_established_world_detail():
         }
     )
 
-    with pytest.raises(ValueError, match="conflicts with established canon"):
+    with pytest.raises(ValueError, match="contradicts established canon"):
         SoftFactValidator().validate(
             state,
             output,
@@ -727,6 +727,37 @@ def test_soft_fact_validator_rejects_conflict_with_established_world_detail():
             allowed_entity_ids={"npc_knott", "loc_sanitarium"},
             allowed_fact_ids=set(),
         )
+
+
+def test_soft_fact_metadata_mismatch_is_dropped_without_erasing_dialogue():
+    _scenario, state = _haunting_state()
+    output = DialogueTurnOutput.model_validate(
+        {
+            "beats": ["“可以，我和你一起去看看。”诺特点了点头。"],
+            "used_fact_ids": [],
+            "proposed_facts": [
+                {
+                    "subject_entity_id": "npc_knott",
+                    "predicate": "access_notes",
+                    "value": "诺特同意陪同调查员前往宅邸。",
+                    "confidence": 0.9,
+                }
+            ],
+            "answered_query_parts": ["你能和我一起去看看吗"],
+            "unresolved_query_parts": [],
+        }
+    )
+
+    SoftFactValidator().validate(
+        state,
+        output,
+        speaker_id="npc_knott",
+        allowed_entity_ids={"npc_knott"},
+        allowed_fact_ids=set(),
+    )
+
+    assert output.beats == ["“可以，我和你一起去看看。”诺特点了点头。"]
+    assert output.proposed_facts == []
 
 
 def test_dialogue_output_repairs_qwen_duplicate_ascii_quote_separator():
@@ -778,6 +809,66 @@ def test_dialogue_failure_does_not_commit_a_partial_turn():
         GameEngine(scenario, llm).play(state, text=text)
 
     assert state.model_dump(mode="json") == snapshot
+
+
+def test_physical_action_with_addressed_question_also_gets_npc_reply():
+    scenario, state = _haunting_state()
+    offline = OpenAICompatibleLLM(LLMSettings(enabled=False, api_key=None))
+    state, introduced = GameEngine(scenario, offline).play(
+        state,
+        action_id="cafe_question_knott",
+    )
+    assert introduced.accepted is True
+    text = "我先收起钥匙，说，你还有什么要告诉我的吗"
+    planner_output = {
+        "existing_action_id": None,
+        "confidence": 0.95,
+        "open_plan": {
+            "label": "收起钥匙",
+            "action_type": "TAKE",
+            "goal": text,
+            "target_name": "科比特宅邸钥匙",
+            "target_entity_id": "item_house_key",
+            "addressee_id": "npc_knott",
+            "duration_minutes": 0,
+            "resolution": "automatic",
+            "risk": "safe",
+            "speech_act": "statement",
+            "referents": [
+                {"mention": "钥匙", "entity_id": "item_house_key", "confidence": 1.0},
+                {"mention": "你", "entity_id": "npc_knott", "confidence": 1.0},
+            ],
+            "knowledge_query": None,
+        },
+    }
+    dialogue_output = {
+        "beats": ["“还有一件事：那栋房子夜里会传出撞击声。”诺特压低声音回答。"],
+        "used_fact_ids": [],
+        "proposed_facts": [],
+        "answered_query_parts": ["你还有什么要告诉我的吗"],
+        "unresolved_query_parts": [],
+    }
+    llm = DialogueRoutingLLM(planner_output, dialogue_output)
+
+    resolved, resolution = GameEngine(scenario, llm).play(state, text=text)
+
+    assert resolution.accepted is True
+    assert resolution.outcome_envelope["action_type"] == ActionType.TAKE
+    assert resolved.turn_traces[-1]["planner_output"]["open_plan"]["speech_act"] == "question"
+    assert resolved.turn_traces[-1]["knowledge_query"] is not None
+    assert resolved.turn_traces[-1]["knowledge_query"]["query_text"] == "你还有什么要告诉我的吗"
+    assert resolved.turn_traces[-1]["knowledge_query"]["subject_entity_ids"] == []
+    assert resolved.turn_traces[-1]["dialogue"] == dialogue_output
+    assert resolved.narrative_sequence is not None
+    assert resolved.narrative_sequence.status == "ready"
+    assert [beat.text for beat in resolved.narrative_sequence.beats] == [
+        "你完成了收起钥匙。",
+        dialogue_output["beats"][0],
+    ]
+    assert [call.get("schema_name") for call in llm.calls] == [
+        "TurnPlannerDecision",
+        "DialogueTurnOutput",
+    ]
 
 
 def test_concealed_npc_knowledge_requires_a_roll_and_only_success_reveals():

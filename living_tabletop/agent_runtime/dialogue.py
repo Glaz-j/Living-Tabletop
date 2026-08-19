@@ -8,7 +8,7 @@ from typing import Iterable
 from ..context import context_relevance_score
 from ..harness import HarnessValidationError, StructuredHarness
 from ..llm import LLMUnavailable, OpenAICompatibleLLM, record_agent_call
-from ..models import EntityType, Fact, OpenActionPlan, WorldState
+from ..models import ActionType, EntityType, Fact, OpenActionPlan, WorldState
 from .contracts import (
     AssembledTurnContext,
     DialogueTurnOutput,
@@ -78,13 +78,12 @@ class SoftFactValidator:
             raise DialogueValidationError("dialogue speaker is not present in the current scene")
         if not output.beats or any(not beat.strip() for beat in output.beats):
             raise DialogueValidationError("dialogue must contain complete non-empty beats")
-        if len(set(output.used_fact_ids)) != len(output.used_fact_ids):
-            raise DialogueValidationError("used_fact_ids contains duplicates")
-        invalid_used = set(output.used_fact_ids) - allowed_fact_ids
-        if invalid_used:
-            raise DialogueValidationError(
-                f"dialogue cites facts the speaker was not allowed to disclose: {sorted(invalid_used)}"
-            )
+        # A malformed citation or soft-fact proposal must not erase an otherwise
+        # useful NPC reply. Unsupported metadata is discarded; hidden hard-canon
+        # leakage in the actual prose is still rejected below.
+        output.used_fact_ids = list(
+            dict.fromkeys(fact_id for fact_id in output.used_fact_ids if fact_id in allowed_fact_ids)
+        )
 
         reply_text = "\n".join(output.beats)
         normalized_reply = self._normalized(reply_text)
@@ -106,40 +105,64 @@ class SoftFactValidator:
                 )
 
         proposal_keys: set[tuple[str, str]] = set()
+        valid_proposals: list[SoftFactProposal] = []
         for proposal in output.proposed_facts:
             entity = state.entities.get(proposal.subject_entity_id)
             if proposal.subject_entity_id not in allowed_entity_ids or entity is None:
-                raise DialogueValidationError(
-                    f"soft fact subject is not an established accessible entity: {proposal.subject_entity_id}"
-                )
+                logger.info("Dropped soft fact for inaccessible entity: %s", proposal.subject_entity_id)
+                continue
             if entity.type not in self._NON_PLAYER_TYPES:
-                raise DialogueValidationError("soft facts cannot modify the player or hostile creatures")
+                logger.info("Dropped soft fact for protected entity type: %s", entity.type)
+                continue
             if proposal.predicate in self._LOCATION_PREDICATES and entity.type != EntityType.LOCATION:
                 if proposal.predicate not in self._NPC_PREDICATES:
-                    raise DialogueValidationError(
-                        f"{proposal.predicate} may only be generated for a location"
+                    logger.info(
+                        "Dropped mismatched soft fact %s for %s",
+                        proposal.predicate,
+                        entity.type,
                     )
+                    continue
             if proposal.predicate in {"mannerism", "habit", "preference", "minor_background"}:
                 if entity.type != EntityType.NPC:
-                    raise DialogueValidationError(
-                        f"{proposal.predicate} may only be generated for an NPC"
+                    logger.info(
+                        "Dropped NPC-only soft fact %s for %s",
+                        proposal.predicate,
+                        entity.type,
                     )
+                    continue
             key = (proposal.subject_entity_id, proposal.predicate)
             if key in proposal_keys:
-                raise DialogueValidationError(f"duplicate soft fact slot: {key}")
-            proposal_keys.add(key)
+                logger.info("Dropped duplicate soft fact slot: %s", key)
+                continue
             attribute_value = entity.attributes.get(proposal.predicate)
             if attribute_value is not None and self._normalized(attribute_value) != self._normalized(proposal.value):
-                raise DialogueValidationError(
-                    f"soft fact conflicts with an established entity attribute: {key}"
-                )
+                if self._normalized(proposal.value) in normalized_reply:
+                    raise DialogueValidationError(
+                        f"dialogue contradicts an established entity attribute: {key}"
+                    )
+                logger.info("Dropped soft fact conflicting with entity attribute: %s", key)
+                continue
+            conflict = False
             for fact in state.facts.values():
                 if fact.subject != proposal.subject_entity_id or fact.predicate != proposal.predicate:
                     continue
                 if fact.id not in state.player_known_fact_ids and fact.canon == "hard_canon":
-                    raise DialogueValidationError(f"soft fact attempts to expose hidden hard canon: {fact.id}")
+                    conflict = True
+                    logger.info("Dropped soft fact overlapping hidden hard canon: %s", fact.id)
+                    break
                 if self._normalized(fact.value) != self._normalized(proposal.value):
-                    raise DialogueValidationError(f"soft fact conflicts with established canon: {fact.id}")
+                    if self._normalized(proposal.value) in normalized_reply:
+                        raise DialogueValidationError(
+                            f"dialogue contradicts established canon: {fact.id}"
+                        )
+                    conflict = True
+                    logger.info("Dropped soft fact conflicting with established canon: %s", fact.id)
+                    break
+            if conflict:
+                continue
+            proposal_keys.add(key)
+            valid_proposals.append(proposal)
+        output.proposed_facts = valid_proposals
 
     def materialize(
         self,
@@ -412,10 +435,13 @@ class DialogueAgent:
         )
         fact_ids = list(dict.fromkeys([*output.used_fact_ids, *reused_ids, *(fact.id for fact in generated)]))
         beats = [beat.strip() for beat in output.beats if beat.strip()]
+        if plan.action_type not in {ActionType.TALK, ActionType.DECEIVE}:
+            beats = [plan.action_success_text or f"你完成了{plan.label}。", *beats]
         return plan.model_copy(
             update={
                 "success_text": "\n\n".join(beats),
                 "success_beats": beats,
+                "dialogue_complete": True,
                 "generated_facts": generated,
                 "approved_fact_ids": fact_ids,
                 "knowledge_source_id": speaker_id,
